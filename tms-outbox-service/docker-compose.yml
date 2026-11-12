@@ -1,0 +1,18 @@
+# Local development dependencies for the Outbox Processing Service (SVC-002).
+# Usage: cp .env.example .env && docker compose up -d
+# GAP (SCAFFOLD-SVC-002): in deployed environments the outbox table lives in the OLTP database of
+# tms-core-service; locally a separate PostgreSQL on port 5433 keeps the services independent.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${TMS_OUTBOX_DB_NAME:-tms_outbox}
+      POSTGRES_USER: ${TMS_OUTBOX_DB_USERNAME:-tms_outbox}
+      POSTGRES_PASSWORD: ${TMS_OUTBOX_DB_PASSWORD:?Set TMS_OUTBOX_DB_PASSWORD in .env}
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

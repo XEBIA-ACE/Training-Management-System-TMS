@@ -1,0 +1,24 @@
+# Local development profile. Activate with SPRING_PROFILES_ACTIVE=local.
+# Defaults point at the PostgreSQL started by tms-outbox-service/docker-compose.yml; the DB password is still
+# supplied via TMS_OUTBOX_DB_PASSWORD (see .env.example).
+spring:
+  datasource:
+    url: ${TMS_OUTBOX_DB_URL:jdbc:postgresql://localhost:5433/tms_outbox}
+    username: ${TMS_OUTBOX_DB_USERNAME:tms_outbox}
+
+tms:
+  outbox:
+    security:
+      jwt:
+        # Allow starting locally without an IdP; all bearer tokens are rejected until one is set.
+        required: ${TMS_OUTBOX_JWT_REQUIRED:false}
+
+management:
+  tracing:
+    sampling:
+      probability: ${TMS_OUTBOX_TRACING_SAMPLING_PROBABILITY:1.0}
+
+logging:
+  structured:
+    format:
+      console: ${TMS_OUTBOX_LOG_FORMAT:}

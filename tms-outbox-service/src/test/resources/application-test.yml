@@ -1,0 +1,15 @@
+# Mirrors the env var a deployment would set; proves the schema is driven by configuration.
+TMS_OUTBOX_DB_SCHEMA: outbox_test
+tms:
+  outbox:
+    auto-start: false
+    security:
+      jwt:
+        jwk-set-uri: http://localhost:0/test-jwks
+logging:
+  structured:
+    format:
+      console:
+management:
+  tracing:
+    enabled: false

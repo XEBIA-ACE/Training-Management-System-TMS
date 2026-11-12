@@ -1,0 +1,97 @@
+# Outbox Processing Service (SVC-002) - base configuration.
+# All environment-specific values (URLs, credentials, issuers, endpoints) come from TMS_OUTBOX_*
+# environment variables; nothing secret or environment-specific is hardcoded here.
+spring:
+  application:
+    name: tms-outbox-service
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: ${TMS_OUTBOX_DB_URL}
+    username: ${TMS_OUTBOX_DB_USERNAME}
+    password: ${TMS_OUTBOX_DB_PASSWORD}
+    hikari:
+      pool-name: tms-outbox-pool
+      schema: ${TMS_OUTBOX_DB_SCHEMA:outbox}
+      maximum-pool-size: ${TMS_OUTBOX_DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${TMS_OUTBOX_DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${TMS_OUTBOX_DB_CONNECTION_TIMEOUT_MS:30000}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: ${TMS_OUTBOX_DB_SCHEMA:outbox}
+        jdbc:
+          time_zone: UTC
+
+  # GAP (SCAFFOLD-SVC-002): ownership of the outbox table between SVC-001 (writer) and SVC-002
+  # (reader) is not specified. This service ships the table DDL in its own schema/history table;
+  # disable with TMS_OUTBOX_DB_MIGRATIONS_ENABLED=false when the table is managed elsewhere.
+  flyway:
+    enabled: ${TMS_OUTBOX_DB_MIGRATIONS_ENABLED:true}
+    schemas: ${TMS_OUTBOX_DB_SCHEMA:outbox}
+    default-schema: ${TMS_OUTBOX_DB_SCHEMA:outbox}
+    create-schemas: true
+    table: outbox_flyway_schema_history
+    locations: classpath:db/migration
+
+tms:
+  outbox:
+    batch-size: ${TMS_OUTBOX_BATCH_SIZE:100}
+    polling-interval-ms: ${TMS_OUTBOX_POLLING_INTERVAL_MS:5000}
+    scheduler-cron: ${TMS_OUTBOX_SCHEDULER_CRON:0 0 * * * *}
+    retry-max-attempts: ${TMS_OUTBOX_RETRY_MAX_ATTEMPTS:5}
+    retry-backoff-ms: ${TMS_OUTBOX_RETRY_BACKOFF_MS:1000}
+    cleanup-retention-days: ${TMS_OUTBOX_CLEANUP_RETENTION_DAYS:7}
+    # none | rabbitmq | kafka. Broker adapters are stubs (TODO SCAFFOLD-SVC-002); with "none"
+    # polling is a no-op so no event is failed before a publisher exists.
+    publisher-type: ${TMS_OUTBOX_PUBLISHER_TYPE:none}
+    pending-threshold: ${TMS_OUTBOX_HEALTH_PENDING_THRESHOLD:1000}
+    auto-start: ${TMS_OUTBOX_PROCESSOR_AUTO_START:true}
+    security:
+      jwt:
+        # Bearer JWT from the central IdP. Startup fails if neither is set while `required` is true.
+        issuer-uri: ${TMS_OUTBOX_JWT_ISSUER_URI:}
+        jwk-set-uri: ${TMS_OUTBOX_JWT_JWK_SET_URI:}
+        audiences: ${TMS_OUTBOX_JWT_AUDIENCES:}
+        required: ${TMS_OUTBOX_JWT_REQUIRED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+  tracing:
+    # OpenTelemetry (Micrometer Tracing OTel bridge). The OTLP exporter is only created when
+    # MANAGEMENT_OTLP_TRACING_ENDPOINT is set (e.g. http://otel-collector:4318/v1/traces).
+    enabled: ${TMS_OUTBOX_TRACING_ENABLED:true}
+    sampling:
+      probability: ${TMS_OUTBOX_TRACING_SAMPLING_PROBABILITY:0.1}
+
+server:
+  port: ${TMS_OUTBOX_SERVER_PORT:8081}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+
+logging:
+  structured:
+    format:
+      console: ${TMS_OUTBOX_LOG_FORMAT:ecs}
+  level:
+    root: ${TMS_OUTBOX_LOG_LEVEL_ROOT:INFO}
+    com.tms.outbox: ${TMS_OUTBOX_LOG_LEVEL_APP:INFO}
