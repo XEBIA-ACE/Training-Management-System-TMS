@@ -1,0 +1,19 @@
+spring:
+  cache:
+    type: none
+  data:
+    redis:
+      # Never contacted: cache is disabled and the Redis health indicator is off.
+      url: redis://localhost:6379
+tms:
+  security:
+    jwt:
+      jwk-set-uri: http://localhost:0/test-jwks
+management:
+  health:
+    redis:
+      enabled: false
+logging:
+  structured:
+    format:
+      console:
