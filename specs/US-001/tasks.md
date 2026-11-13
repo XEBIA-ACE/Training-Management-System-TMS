@@ -1,29 +1,12 @@
 # Tasks: US-001
 
-## Implementation Tasks
-- [ ] T001 FR-US-001-001 (US-001-ac-1): The system SHALL send an HTTP POST request to the /customers endpoint of the customer-service REST API when creating a new customer resource, and upon receiving an HTTP 201 Created response, SHALL display in the UI at least the returned customer ID, name, and city. This requirement assumes, but does not define, the structure of the POST payload and the full response body from the customer-service API.
-- [ ] T002 FR-US-001-002 (US-001-ac-2): The system SHALL send an HTTP GET request to the /customers endpoint of the customer-service REST API to retrieve all customer records, and when an HTTP 200 OK response is received, SHALL present all customer records returned by that response in the UI. This requirement does not specify how pagination, filtering, or partial responses (if any) are handled by the API or UI.
-- [ ] T003 FR-US-001-003 (US-001-ac-3): The system SHALL use the /customers/:id route of the customer-service REST API to send an HTTP GET request for a specific customer when a valid customer ID is provided, SHALL display that customer’s information in the UI when an HTTP 200 OK response is received, and SHALL correctly handle an HTTP 404 Not Found response by indicating in the UI that the customer does not exist (exact wording and visual treatment are not specified here).
-- [ ] T004 FR-US-001-004 (US-001-ac-4): The system SHALL use the /customers/:id endpoint of the customer-service REST API to send HTTP requests to update an existing customer’s name and/or city, and upon receiving an HTTP 200 OK response, SHALL reflect the updated name and/or city in the UI. This requirement does not specify whether other customer fields may also be updated or how concurrent updates are resolved.
-- [ ] T005 FR-US-001-005 (US-001-ac-5): The system SHALL send HTTP DELETE requests to the /customers/:id endpoint of the customer-service REST API to remove customers, and when an HTTP 200 OK or 204 No Content response is received, SHALL update the UI to indicate successful removal of the customer. If an HTTP 404 Not Found response is received, the system SHALL indicate in the UI that the customer was not found; this requirement does not define the exact UI messaging or behavior in other error cases.
-
-## Verification Tasks
-- [ ] T006 Verify US-001-ac-1: Ensure that POST requests to the /customers endpoint create a new customer resource by consuming the customer-service REST API, then display the customer ID, name, and city in the UI upon receiving a HTTP 201 response.
-- [ ] T007 Verify US-001-ac-2: Present all customer records in the UI when a GET request is sent to the /customers endpoint by consuming the customer-service REST API and receiving a HTTP 200 response.
-- [ ] T008 Verify US-001-ac-3: Use the /customers/:id route to fetch and display specific customer information by consuming the customer-service REST API when a GET request is sent with a valid customer ID, and correctly handle a 404 response if the customer does not exist.
-- [ ] T009 Verify US-001-ac-4: Utilize the /customers/:id endpoint to send customer update requests for name and/or city changes, reflecting these changes in the UI after receiving a HTTP 200 response from the customer-service REST API.
-- [ ] T010 Verify US-001-ac-5: Implement DELETE requests using the /customers/:id endpoint to remove customers, ensuring the UI reflects success upon receiving a 200 or 204 response, and handle a 404 response correctly if the customer is not found.
-
-## Test Obligations & Evidence
-- Test obligations (CI, required before release):
-  - e51336cf-d749-4a4a-9e59-b6322b3b4237:test:acceptance:US-001-ac-1
-  - e51336cf-d749-4a4a-9e59-b6322b3b4237:test:acceptance:US-001-ac-2
-  - e51336cf-d749-4a4a-9e59-b6322b3b4237:test:acceptance:US-001-ac-3
-  - e51336cf-d749-4a4a-9e59-b6322b3b4237:test:acceptance:US-001-ac-4
-  - e51336cf-d749-4a4a-9e59-b6322b3b4237:test:acceptance:US-001-ac-5
-- Expected evidence:
-  - test result for US-001-ac-1
-  - test result for US-001-ac-2
-  - test result for US-001-ac-3
-  - test result for US-001-ac-4
-  - test result for US-001-ac-5
+- [ ] T001 FR-US-001-AC1: The system SHALL expose a POST /api/v1/customers endpoint that, when invoked with valid customer data, creates a new customer record, assigns it a unique identifier, and returns an HTTP 201 Created response containing the full customer details including the newly generated unique ID, as required by US-001-ac-1. Any constraints on the structure or validation of the customer data are not specified in the acceptance criterion and therefore remain undefined in this specification.
+- [ ] T002 FR-US-001-AC2: The system SHALL expose a GET /api/v1/customers endpoint that returns an HTTP 200 OK response containing a list of customers, where each customer entry includes at least id, name, and city, and the endpoint supports pagination of the result set, as required by US-001-ac-2. The exact pagination mechanism (e.g., page/size parameters vs. cursor-based) and maximum page size are not defined in the acceptance criterion and are therefore left unspecified here.
+- [ ] T003 FR-US-001-AC3: The system SHALL expose a GET /api/v1/customers/{id} endpoint that, when a customer with the specified id exists, returns an HTTP 200 OK response containing that customer’s details, and when a customer with the specified id does not exist, returns an HTTP 404 Not Found response, as required by US-001-ac-3. The acceptance criterion does not specify what fields must be included in the customer details response beyond aligning with the overall customer model, so this remains unspecified in this specification.
+- [ ] T004 FR-US-001-AC4: The system SHALL expose a PUT /api/v1/customers/{id} endpoint that updates the details of an existing customer identified by id and returns an HTTP 200 OK response on successful update, and that returns an HTTP 404 Not Found response when a customer with the specified id does not exist, as required by US-001-ac-4. The acceptance criterion does not define whether partial updates are allowed or what validation rules apply to updates, so these aspects are not specified here.
+- [ ] T005 FR-US-001-AC5: The system SHALL expose a DELETE /api/v1/customers/{id} endpoint that, when a customer with the specified id exists, deletes that customer and returns an HTTP 204 No Content response, and when a customer with the specified id does not exist, returns an HTTP 404 Not Found response, as required by US-001-ac-5. The acceptance criterion does not specify any constraints or side effects related to deleting a customer (such as cascading effects on related data), so those aspects remain unspecified in this specification.
+- [ ] T006 Verify US-001-ac-1: Implement POST /api/v1/customers to create a new customer with a unique ID, returning status 201 and the customer details including the new ID.
+- [ ] T007 Verify US-001-ac-2: Implement GET /api/v1/customers to list all customers with pagination support, returning status 200 and customer details (id, name, city).
+- [ ] T008 Verify US-001-ac-3: Implement GET /api/v1/customers/{id} to retrieve specific customer details by ID, returning status 200 for found and 404 for not found cases.
+- [ ] T009 Verify US-001-ac-4: Implement PUT /api/v1/customers/{id} to update customer details, which should handle both 200 success responses and 404 for non-existing customers.
+- [ ] T010 Verify US-001-ac-5: Implement DELETE /api/v1/customers/{id} to delete a customer by ID, ensuring successful deletion returns 204, and 404 if customer does not exist.
