@@ -22,6 +22,8 @@ import org.springframework.security.web.SecurityFilterChain;
  *   <li>{@code /actuator/metrics/**}: {@code SUPER_ADMIN} or {@code OPS_MONITOR}.
  *   <li>{@code /api/admin/**}: {@code SUPER_ADMIN}.
  *   <li>{@code POST /api/auth/login|refresh}: public only when legacy auth is enabled.
+ *   <li>{@code /api/v1/customers/**} (US-001): authenticated bearer token. GAP(US-001): no
+ *       customer-specific roles/permissions are specified, so no role restriction is applied.
  *   <li>Everything else: authenticated bearer token.
  * </ul>
  */
@@ -64,6 +66,7 @@ public class SecurityConfig {
                 auth.requestMatchers(OPENAPI_PATHS).permitAll();
               }
               auth.requestMatchers("/api/admin/**").hasRole(TmsRoles.SUPER_ADMIN);
+              auth.requestMatchers("/api/v1/customers", "/api/v1/customers/**").authenticated();
               auth.anyRequest().authenticated();
             })
         .oauth2ResourceServer(

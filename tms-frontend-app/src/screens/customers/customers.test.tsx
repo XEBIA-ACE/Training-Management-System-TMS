@@ -1,12 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, type Mock } from 'vitest';
-import { CUSTOMERS_PATH, type Customer } from '../../api/customerApi';
+import { CUSTOMERS_PATH, CUSTOMER_PAGE_SIZE, type Customer } from '../../api/customerApi';
 import { ROUTES, customerDetailPath } from '../../routes/routes';
 import { renderApp } from '../../test/renderApp';
 
 /**
- * US-001 acceptance tests (FR-US-001-001..FR-US-001-005) for the customer screens SCR-016 / SCR-018.
+ * US-001 acceptance tests (FR-US-001-AC1..FR-US-001-AC5) for the customer screens SCR-016 / SCR-018.
  * Each test asserts the HTTP interaction (verb, path, status handling) and the resulting UI.
  * Test obligations: test:acceptance:US-001-ac-1..ac-5.
  */
@@ -30,6 +30,18 @@ function json(body: unknown, status: number): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+function page(content: Customer[], number = 0, totalPages = 1): unknown {
+  return {
+    content,
+    page: number,
+    size: CUSTOMER_PAGE_SIZE,
+    totalElements: content.length,
+    totalPages,
+  };
+}
+
+const LIST_URL = `${CUSTOMERS_PATH}?page=0&size=${CUSTOMER_PAGE_SIZE}`;
 
 function mockFetch(handler: Handler): Mock {
   const fn = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) =>
@@ -57,7 +69,7 @@ describe('[US-001-ac-1] create customer via POST /customers', () => {
       city: 'Goa',
     };
     const fetchMock = mockFetch((_url, init) =>
-      init.method === 'POST' ? json(created, 201) : json([ACME], 200),
+      init.method === 'POST' ? json(created, 201) : json(page([ACME]), 200),
     );
     const user = userEvent.setup();
     renderApp(ROUTES.customerList.path);
@@ -83,7 +95,9 @@ describe('[US-001-ac-1] create customer via POST /customers', () => {
 
   it('[US-001-ac-1] keeps the form open with an error when the response is not 201', async () => {
     mockFetch((_url, init) =>
-      init.method === 'POST' ? json({ message: 'Request validation failed.' }, 400) : json([], 200),
+      init.method === 'POST'
+        ? json({ message: 'Request validation failed.' }, 400)
+        : json(page([]), 200),
     );
     const user = userEvent.setup();
     renderApp(ROUTES.customerList.path);
@@ -101,7 +115,7 @@ describe('[US-001-ac-1] create customer via POST /customers', () => {
 
 describe('[US-001-ac-2] list customers via GET /customers', () => {
   it('[US-001-ac-2] sends GET and renders every customer returned with HTTP 200', async () => {
-    const fetchMock = mockFetch(() => json([ACME, BETA], 200));
+    const fetchMock = mockFetch(() => json(page([ACME, BETA]), 200));
     renderApp(ROUTES.customerList.path);
 
     const table = await screen.findByRole('table', { name: 'Customers' });
@@ -111,7 +125,23 @@ describe('[US-001-ac-2] list customers via GET /customers', () => {
       expect(within(row).getByText(customer.city)).toBeInTheDocument();
     }
     expect(within(table).getAllByRole('row')).toHaveLength(3);
-    expect(calls(fetchMock)).toEqual([{ method: 'GET', url: CUSTOMERS_PATH, body: undefined }]);
+    expect(calls(fetchMock)).toEqual([{ method: 'GET', url: LIST_URL, body: undefined }]);
+  });
+
+  it('[US-001-ac-2] walks every page of GET /api/v1/customers and renders all customers', async () => {
+    const fetchMock = mockFetch((url) =>
+      url.includes('page=1') ? json(page([BETA], 1, 2), 200) : json(page([ACME], 0, 2), 200),
+    );
+    renderApp(ROUTES.customerList.path);
+
+    const table = await screen.findByRole('table', { name: 'Customers' });
+    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(3));
+    expect(within(table).getByText(ACME.name)).toBeInTheDocument();
+    expect(within(table).getByText(BETA.name)).toBeInTheDocument();
+    expect(calls(fetchMock).map((call) => call.url)).toEqual([
+      LIST_URL,
+      `${CUSTOMERS_PATH}?page=1&size=${CUSTOMER_PAGE_SIZE}`,
+    ]);
   });
 
   it('[US-001-ac-2] shows an error banner when the list request fails', async () => {
@@ -161,7 +191,7 @@ describe('[US-001-ac-3] view customer via GET /customers/:id', () => {
   });
 
   it('[US-001-ac-3] navigates from the list to the detail view', async () => {
-    mockFetch((url) => (url.endsWith(ACME.id) ? json(ACME, 200) : json([ACME], 200)));
+    mockFetch((url) => (url.endsWith(ACME.id) ? json(ACME, 200) : json(page([ACME]), 200)));
     const user = userEvent.setup();
     renderApp(ROUTES.customerList.path);
     await user.click(await screen.findByRole('link', { name: 'View Acme Corp' }));
@@ -229,7 +259,7 @@ describe('[US-001-ac-5] delete customer via DELETE /customers/:id', () => {
     '[US-001-ac-5] removes the customer from the list on HTTP %i',
     async (status) => {
       const fetchMock = mockFetch((_url, init) =>
-        init.method === 'DELETE' ? new Response(null, { status }) : json([ACME, BETA], 200),
+        init.method === 'DELETE' ? new Response(null, { status }) : json(page([ACME, BETA]), 200),
       );
       const user = userEvent.setup();
       renderApp(ROUTES.customerList.path);
@@ -249,7 +279,7 @@ describe('[US-001-ac-5] delete customer via DELETE /customers/:id', () => {
   );
 
   it('[US-001-ac-5] indicates not found on HTTP 404 from the list', async () => {
-    mockFetch((_url, init) => (init.method === 'DELETE' ? json({}, 404) : json([ACME], 200)));
+    mockFetch((_url, init) => (init.method === 'DELETE' ? json({}, 404) : json(page([ACME]), 200)));
     const user = userEvent.setup();
     renderApp(ROUTES.customerList.path);
     await user.click(await screen.findByRole('button', { name: 'Remove Acme Corp' }));

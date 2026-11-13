@@ -14,6 +14,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /** Maps customer API failures onto the shared {@link ErrorResponse} envelope. */
@@ -27,10 +28,31 @@ class CustomerApiExceptionHandler {
   }
 
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-  ResponseEntity<ErrorResponse> invalidId(HttpServletRequest request) {
-    return respond(
-        ErrorResponse.of(
-            request, HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Customer ID is not valid."));
+  ResponseEntity<ErrorResponse> invalidArgument(
+      MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    String message =
+        "id".equals(ex.getName())
+            ? "Customer ID is not valid."
+            : "Parameter '" + ex.getName() + "' is not valid.";
+    return respond(ErrorResponse.of(request, HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", message));
+  }
+
+  /** Invalid {@code page}/{@code size} query parameters on the customer list (FR-US-001-AC2). */
+  @ExceptionHandler(HandlerMethodValidationException.class)
+  ResponseEntity<ErrorResponse> invalidParameters(
+      HandlerMethodValidationException ex, HttpServletRequest request) {
+    List<ValidationErrorItem> details =
+        ex.getParameterValidationResults().stream()
+            .flatMap(
+                result ->
+                    result.getResolvableErrors().stream()
+                        .map(
+                            error ->
+                                new ValidationErrorItem(
+                                    result.getMethodParameter().getParameterName(),
+                                    error.getDefaultMessage())))
+            .toList();
+    return respond(validationFailed(request, details));
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -53,17 +75,21 @@ class CustomerApiExceptionHandler {
                             : error.getObjectName(),
                         error.getDefaultMessage()))
             .toList();
+    return respond(validationFailed(request, details));
+  }
+
+  private static ErrorResponse validationFailed(
+      HttpServletRequest request, List<ValidationErrorItem> details) {
     HttpStatus status = HttpStatus.BAD_REQUEST;
-    return respond(
-        new ErrorResponse(
-            Instant.now(),
-            CorrelationIdFilter.currentTraceId(request),
-            request.getRequestURI(),
-            status.value(),
-            status.getReasonPhrase(),
-            "VALIDATION_FAILED",
-            "Request validation failed.",
-            details));
+    return new ErrorResponse(
+        Instant.now(),
+        CorrelationIdFilter.currentTraceId(request),
+        request.getRequestURI(),
+        status.value(),
+        status.getReasonPhrase(),
+        "VALIDATION_FAILED",
+        "Request validation failed.",
+        details);
   }
 
   private static ResponseEntity<ErrorResponse> respond(ErrorResponse body) {
