@@ -31,11 +31,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * US-002 acceptance tests for {@code POST /api/v1/orders}. Test obligations:
- * 58a24a48-f2cc-44e4-859c-c2b4c0b5e18c:test:acceptance:US-002-ac-1..ac-5.
+ * bb21c484-7d07-4825-a021-6cb339f07906:test:acceptance:US-002-ac-1..ac-5.
  *
- * <p>The status codes for an unknown customer/product (404) and the success code (201) are local
- * implementation choices (see docs/adr/US-002-orders-unspecified-behavior.md), not spec
- * requirements.
+ * <p>The success code (201) and the error codes/body shape are local implementation choices (see
+ * docs/adr/US-002-orders-unspecified-behavior.md), not spec requirements; the 400 statuses are.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -67,30 +66,9 @@ class OrderApiAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-002-ac-1] unknown customer ID is rejected and no order is created")
-  void us002Ac1_customerMustExist() throws Exception {
-    placeOrder(UUID.randomUUID(), productId, 1).andExpect(status().is4xxClientError());
-    assertThat(orders.count()).isZero();
-  }
-
-  @Test
-  @DisplayName("[US-002-ac-2] unknown product ID is rejected and no order is created")
-  void us002Ac2_productMustExist() throws Exception {
-    placeOrder(customerId, UUID.randomUUID(), 1).andExpect(status().is4xxClientError());
-    assertThat(orders.count()).isZero();
-  }
-
-  @Test
-  @DisplayName("[US-002-ac-3] quantity <= 0 returns 400 Bad Request")
-  void us002Ac3_quantityMustBePositive() throws Exception {
-    placeOrder(customerId, productId,0).andExpect(status().isBadRequest());
-    placeOrder(customerId, productId,-5).andExpect(status().isBadRequest());
-  }
-
-  @Test
-  @DisplayName("[US-002-ac-4] valid order returns 2xx with the new order ID and details")
-  void us002Ac4_validOrderReturns2xxWithIdAndDetails() throws Exception {
-    placeOrder(customerId, productId,3)
+  @DisplayName("[US-002-ac-1] valid order returns 2xx with the new order representation")
+  void us002Ac1_validOrderReturns2xxWithOrder() throws Exception {
+    placeOrder(customerId, productId, 3)
         .andExpect(status().is2xxSuccessful())
         .andExpect(jsonPath("$.id").isNotEmpty())
         .andExpect(jsonPath("$.customerId").value(customerId.toString()))
@@ -100,15 +78,39 @@ class OrderApiAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-002-ac-5] invalid inputs never persist an order")
+  @DisplayName("[US-002-ac-2] unknown customer ID returns 400 and no order is created")
+  void us002Ac2_unknownCustomerReturns400() throws Exception {
+    placeOrder(UUID.randomUUID(), productId, 1)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("CUSTOMER_NOT_FOUND"));
+    assertThat(orders.count()).isZero();
+  }
+
+  @Test
+  @DisplayName("[US-002-ac-3] unknown product ID returns 400 and no order is created")
+  void us002Ac3_unknownProductReturns400() throws Exception {
+    placeOrder(customerId, UUID.randomUUID(), 1)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+    assertThat(orders.count()).isZero();
+  }
+
+  @Test
+  @DisplayName("[US-002-ac-4] quantity <= 0 returns 400 Bad Request")
+  void us002Ac4_nonPositiveQuantityReturns400() throws Exception {
+    placeOrder(customerId, productId, 0).andExpect(status().isBadRequest());
+    placeOrder(customerId, productId, -5).andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("[US-002-ac-5] failed validation attempts never persist an order")
   void us002Ac5_failedAttemptsPersistNothing() throws Exception {
-    placeOrder(customerId, productId,0).andExpect(status().isBadRequest());
-    placeOrder(customerId, productId,-1).andExpect(status().isBadRequest());
-    placeOrder(UUID.randomUUID(), productId, 1).andExpect(status().is4xxClientError());
-    placeOrder(customerId, UUID.randomUUID(), 1).andExpect(status().is4xxClientError());
-    mockMvc
-        .perform(post(ORDERS).with(jwt()).contentType(MediaType.APPLICATION_JSON).content("{}"))
-        .andExpect(status().isBadRequest());
+    placeOrder(customerId, productId, 0).andExpect(status().isBadRequest());
+    placeOrder(customerId, productId, -1).andExpect(status().isBadRequest());
+    placeOrder(UUID.randomUUID(), productId, 1).andExpect(status().isBadRequest());
+    placeOrder(customerId, UUID.randomUUID(), 1).andExpect(status().isBadRequest());
+    // FR-US-002-007: multiple errors -> still 400 and nothing persisted.
+    placeOrder(UUID.randomUUID(), productId, 0).andExpect(status().isBadRequest());
     assertThat(orders.count()).isZero();
   }
 
