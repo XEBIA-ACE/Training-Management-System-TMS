@@ -2,7 +2,7 @@
  * Route table keyed by the approved screen IDs (references/screens.md, references/navigation.md).
  * Screen IDs are used verbatim and must not be repurposed.
  *
- * `scaffolded: true` screens are in scope for SCAFFOLD-frontend-app and have stub components.
+ * `scaffolded: true` screens have components (SCAFFOLD-frontend-app stubs or feature stories).
  * Others are referenced by the primary navigation but have no exported screen spec yet; they
  * render a placeholder until a later story defines them.
  */
@@ -79,13 +79,13 @@ export const ROUTES = {
     screenId: 'SCR-016',
     path: '/customers',
     title: 'Customer List',
-    scaffolded: false,
+    scaffolded: true,
   },
   customerDetail: {
     screenId: 'SCR-018',
     path: '/customers/detail',
     title: 'Customer Detail',
-    scaffolded: false,
+    scaffolded: true,
   },
   requirementList: {
     screenId: 'SCR-019',
@@ -201,4 +201,8 @@ export const PLACEHOLDER_ROUTES: readonly ScreenRoute[] = Object.values(ROUTES).
 
 export function adminUserEditPath(userId: string): string {
   return ROUTES.adminUserEdit.path.replace(':userId', encodeURIComponent(userId));
+}
+
+export function customerDetailPath(customerId: string): string {
+  return `${ROUTES.customerDetail.path}?id=${encodeURIComponent(customerId)}`;
 }

@@ -1,6 +1,7 @@
 /**
  * Module boundary (mod-customer): Customers and customer training requirements.
  *
- * <p>Placeholder package reserved by SCAFFOLD-SVC-001; domain code is added by later stories.
+ * <p>US-001 adds customer CRUD ({@code /api/customers}): {@code domain} (entity, repository),
+ * {@code application} (use cases) and {@code api} (REST controller, DTOs, error mapping).
  */
 package com.tms.customer;
