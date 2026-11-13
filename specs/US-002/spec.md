@@ -1,113 +1,68 @@
 # Feature Specification: US-002
 
-## Story Overview
-- **Story ID**: US-002
-- **Title**: Search and Filter Trainer Profiles by Status, Credential, and Allocation
+## User Story
+Search and Filter Trainer Profiles by Status, Credential, and Allocation (story:US-002)
 
-## Behavior Summary
-- The system exposes a POST '/orders' HTTP endpoint that creates a new order only when provided with a valid customer identifier, a valid product identifier, and a strictly positive quantity.
-- On successful validation and creation it returns a 2xx response with the persisted order details.
-- When validation fails because the customer does not exist, the product does not exist, or the quantity is less than or equal to zero, the endpoint returns a 400 Bad Request with an indication of the specific validation failure, and it does not create or persist any order record for that request.
+Provide an authorized trainer directory that supports free-text search (name/email/employee ID) and filtering by key scheduling and eligibility attributes: active/inactive status, certifications, location and derived time zone, weekend availability, and current booking state (free/tentative/confirmed). Results allow quick navigation to a trainer profile and initiation of allocation, while respecting permissions and meeting performance expectations at expected scale. Searches are logged at a high level for compliance without capturing sensitive free-text where policy prohibits.
 
-## User Scenarios & Acceptance Criteria
-- **US-002-ac-1**: Ensure that the POST request to '/orders' endpoint correctly creates an order when given valid customer ID, product ID, and quantity greater than zero, by returning a 2xx status and the new order details.
-- **US-002-ac-2**: Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent customer ID, correctly indicating that the customer does not exist.
-- **US-002-ac-3**: Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent product ID, correctly indicating that the product does not exist.
-- **US-002-ac-4**: Implement validation at the '/orders' endpoint to return a 400 Bad Request status when an order creation attempt is made with a quantity less than or equal to zero, correctly indicating that the quantity is invalid.
-- **US-002-ac-5**: Ensure that no orders exist in the system that correspond to failed order creation attempts due to validation errors such as unknown customer, unknown product, or non-positive quantity.
+## User Scenarios & Testing
+- **US-002-ac-1**: When the UI requests trainer directory results via GET /api/v1/trainers with query parameters for status, OEM certification identifiers, allocation state, location, and weekend availability, the Trainer Application Service SearchTrainers query combines all provided filters so that only trainers satisfying every specified criterion are returned from Trainer Repository SearchTrainers.
+- **US-002-ac-2**: When the UI includes a free text search term (covering trainer name, email, or employee identifier) alongside structured filters in GET /api/v1/trainers, the Trainer Domain Services apply the text term against the appropriate trainer fields and intersect those matches with the structured filter set before returning the paged result to the client.
+- **US-002-ac-3**: When the trainer dataset volume is at expected production scale, the Trainer Repository SearchTrainers operation executing behind GET /api/v1/trainers must return the initial page of results within the agreed performance threshold, as measured by Logging and Monitoring Component metrics, without timing out or degrading other transactional workloads.
+- **US-002-ac-4**: When the client requests trainer directory data including allocation state indicators, Trainer Application Service uses GetTrainerAllocations together with Workshop and Allocation Repository data to derive and return per trainer allocation flags for free, tentative, and confirmed states in the GET /api/v1/trainers response model.
+- **US-002-ac-5**: When a user selects an individual trainer from the directory results and chooses to view the profile, GET /api/v1/trainers responds with enough identifier and routing information for the frontend to navigate to the detailed trainer profile view backed by CreateTrainer, UpdateTrainer, and GetTrainerById flows without additional lookup calls for basic identity fields.
+- **US-002-ac-6**: When a user selects an individual trainer from the directory results and chooses to initiate an allocation, GET /api/v1/trainers returns trainer and availability identifiers required for downstream POST /api/v1/workshops/{id}/allocate-trainer calls, and Workshop and Allocation Application Service AllocateTrainer enforces availability and conflict rules before confirming the allocation.
+- **US-002-ac-7**: Whenever a trainer search or filter operation completes through GET /api/v1/trainers, the HTTP API Controller Layer invokes Logging and Monitoring Component to emit a structured log entry including the authenticated user, timestamp, and high level filter criteria used for the search, ensuring any sensitive free text is not logged in full but is either omitted or appropriately masked according to logging policy.
 
 ## Functional Requirements
-- FR-US-002-001 (traces to US-002-ac-1): The system SHALL provide a POST '/orders' endpoint that, when invoked with a request body containing a valid existing customer ID, a valid existing product ID, and a quantity value strictly greater than zero, responds with an HTTP 2xx status code and a response payload that includes the details of the newly created order.
-- FR-US-002-002 (traces to US-002-ac-1, ambiguity preserved): The definition of "new order details" in the 2xx response payload (e.g., which fields are included beyond at least an order identifier, customer ID, product ID, and quantity) is NOT specified by this story and MAY vary; tests for this requirement SHALL only assert that some order representation is returned, not a specific schema beyond what other specifications define.
-- FR-US-002-003 (traces to US-002-ac-2): When a POST '/orders' request references a customer ID that does not correspond to any existing customer in the system, the endpoint SHALL NOT create an order and SHALL respond with HTTP 400 Bad Request and an error indication that the customer does not exist (exact error message text and structure are unspecified by this story).
-- FR-US-002-004 (traces to US-002-ac-3): When a POST '/orders' request references a product ID that does not correspond to any existing product in the system, the endpoint SHALL NOT create an order and SHALL respond with HTTP 400 Bad Request and an error indication that the product does not exist (exact error message text and structure are unspecified by this story).
-- FR-US-002-005 (traces to US-002-ac-4): When a POST '/orders' request includes a quantity value that is less than or equal to zero, the endpoint SHALL NOT create an order and SHALL respond with HTTP 400 Bad Request and an error indication that the quantity is invalid (exact error message text and structure are unspecified by this story).
-- FR-US-002-006 (traces to US-002-ac-5): For any POST '/orders' request that fails due to validation errors covered by this story (non-existent customer ID, non-existent product ID, or quantity less than or equal to zero), the system SHALL ensure that no corresponding order record is persisted in the system (i.e., after the failed request completes, there MUST be no new order that can be retrieved which matches the rejected input).
-- FR-US-002-007 (traces to US-002-ac-2, US-002-ac-3, US-002-ac-4, ambiguity preserved): If multiple validation errors (e.g., both unknown customer and invalid quantity) are present in a single POST '/orders' request, this story does NOT specify whether the '/orders' endpoint SHALL report one or multiple error reasons; the only mandated behavior is that it returns HTTP 400 Bad Request and does not create an order.
+- FR-US-002-001 (maps AC: US-002-ac-1): The Trainer Application Service MUST expose GET /api/v1/trainers such that, when query parameters for trainer status, OEM certification identifiers, allocation state, location, and/or weekend availability are supplied, the SearchTrainers operation combines all provided filters with logical AND semantics so that the Trainer Repository SearchTrainers returns only trainers that satisfy every specified criterion; behavior when a particular filter parameter is omitted or null is not further constrained by this story and must not be assumed.
+- FR-US-002-002 (maps AC: US-002-ac-2): When the UI supplies a free-text search term in GET /api/v1/trainers, the Trainer Domain Services MUST apply the term against the trainer name, email, and employee identifier fields and then intersect (logical AND) the resulting trainer set with the set obtained from any structured filters; the exact matching behavior (case sensitivity, partial vs exact match, tokenization) is not specified by this story and remains an explicit ambiguity to be resolved elsewhere.
+- FR-US-002-003 (maps AC: US-002-ac-3): Under expected production-scale trainer data volume, the Trainer Repository SearchTrainers operation invoked by GET /api/v1/trainers MUST return the initial page of results within an "agreed performance threshold" as measured by Logging and Monitoring Component metrics, and MUST NOT time out or cause material degradation of other transactional workloads; the precise numeric performance threshold is not defined in this story and must be established outside this specification.
+- FR-US-002-004 (maps AC: US-002-ac-4): When the client requests trainer directory data that includes allocation state indicators, the Trainer Application Service MUST invoke GetTrainerAllocations and use Workshop and Allocation Repository data to derive, for each trainer in the GET /api/v1/trainers response, allocation flags indicating whether the trainer is free, tentative, and/or confirmed; the story does not specify how overlapping or conflicting states are represented and this ambiguity is noted but not resolved here.
+- FR-US-002-005 (maps AC: US-002-ac-5): For each trainer returned by GET /api/v1/trainers, the response model MUST include sufficient identifier and routing information (e.g., trainer unique identifier and any required route key) so that the frontend can navigate directly to the detailed trainer profile view that is backed by CreateTrainer, UpdateTrainer, and GetTrainerById flows, without performing additional API lookups for basic identity fields; the exact set of required fields is not enumerated in this story and remains an implementation detail to be defined consistently across these flows.
+- FR-US-002-006 (maps AC: US-002-ac-6): For users initiating an allocation from the trainer directory, GET /api/v1/trainers MUST return, for each trainer record, the trainer and availability identifiers required to perform downstream POST /api/v1/workshops/{id}/allocate-trainer calls, and the Workshop and Allocation Application Service AllocateTrainer MUST enforce trainer availability and conflict rules prior to confirming any allocation; the detailed availability and conflict rule set is not defined in this story and is treated as an external dependency.
+- FR-US-002-007 (maps AC: US-002-ac-7): Upon completion of each trainer search or filter operation via GET /api/v1/trainers (including successful and, where technically feasible, failed attempts), the HTTP API Controller Layer MUST invoke the Logging and Monitoring Component to emit a structured log entry that includes the authenticated user identity, timestamp, and high-level filter criteria used for the search, and MUST ensure that any sensitive free-text search content is not logged in full but is either omitted or masked according to the applicable logging policy; the story does not specify the exact masking strategy or which portions of free text are considered sensitive, and this remains governed by the external logging policy.
 
-## API and Contract Impact
-- New API event data contract:
-  - **Nature**: new_endpoint
-  - **Service ID**: SVC-001 (Training Management Core Service)
-  - **Method**: POST
-  - **Endpoint**: /orders
-  - **Description**: New POST /orders endpoint in Training Management Core Service to create an order with validation of customer ID, product ID, and quantity > 0, integrated with existing JWT auth and RBAC patterns.
-  - **Evidence**: spec_technical_design steps [0, 1, 2, 6, 7, 8].
-- Contract change required: **true**.
-- Contract change reasons:
-  - A new POST /orders API endpoint is introduced in SVC-001, which is a material API contract addition.
+## Technical Design Traceability
+- Implement changes in grounded service SVC-007.
+- Within SVC-007, define or extend the HTTP API Controller for GET /api/trainers to accept query parameters for trainer status, OEM certification identifiers, allocation state, location, weekend availability, and an optional free-text search term, routing requests to Trainer Application Service SearchTrainers. [evidence: service:SVC-007, story:US-002, FR-US-002-001, FR-US-002-002]
+- Extend the Trainer Application Service SearchTrainers operation in SVC-007 to compose logical-AND filtering across all provided structured filters (status, OEM certifications, allocation state, location, weekend availability) and delegate to Trainer Domain Services for applying free-text search over trainer name, email, and employee identifier. [evidence: service:SVC-007, story:US-002, AC:US-002-ac-1, AC:US-002-ac-2, FR-US-002-001, FR-US-002-002]
+- Enhance Trainer Domain Services in SVC-007 to intersect the free-text search result set with the structured filter result set before paging, without specifying matching semantics beyond what is defined in FR-US-002-002. [evidence: service:SVC-007, story:US-002, FR-US-002-002]
+- Optimize the Trainer Repository SearchTrainers query in SVC-007 (Core-OLTP-DB access) for expected production-scale data, ensuring the initial page for GET /api/trainers meets externally defined performance thresholds without degrading other transactional workloads; capture relevant timing metrics via the Logging and Monitoring Component. [evidence: service:SVC-007, story:US-002, AC:US-002-ac-3, FR-US-002-003]
+- Extend Workshop and Allocation Repository components and GetTrainerAllocations usage in SVC-007 so that Trainer Application Service can derive per-trainer allocation flags (free, tentative, confirmed) for inclusion in GET /api/trainers responses, without resolving representation ambiguities noted in FR-US-002-004. [evidence: service:SVC-007, story:US-002, AC:US-002-ac-4, FR-US-002-004]
+- Adjust the GET /api/trainers response model in SVC-007 so each trainer record includes identifiers and routing information sufficient for the frontend to navigate to trainer profile flows backed by CreateTrainer, UpdateTrainer, and GetTrainerById, avoiding additional lookups for basic identity fields. [evidence: service:SVC-007, story:US-002, AC:US-002-ac-5, FR-US-002-005]
+- Extend the GET /api/trainers response model in SVC-007 to include trainer and availability identifiers required by downstream POST /api/v1/workshops/{id}/allocate-trainer calls, ensuring the Workshop and Allocation Application Service AllocateTrainer enforces availability and conflict rules prior to confirming allocations. [evidence: service:SVC-007, story:US-002, AC:US-002-ac-6, FR-US-002-006]
+- Update the HTTP API Controller Layer for GET /api/trainers in SVC-007 to emit structured search-completion logs via the Logging and Monitoring Component, including authenticated user, timestamp, and high-level filter criteria, while omitting or masking sensitive free-text content as required by external logging policy. [evidence: service:SVC-007, story:US-002, AC:US-002-ac-7, FR-US-002-007]
 
-## Technical Design References
-- Design is grounded in unresolved references and existing service documentation:
-  - artifact-SVC-001-api_spec (unresolved reference)
-  - artifact-SVC-001-c3 (unresolved reference)
-  - artifact-SVC-001-c4 (unresolved reference)
-  - service:SVC-001 (unresolved reference)
-- Key design steps (from technical design artifact):
-  1. Implement POST '/orders' endpoint within grounded service SVC-001, adding a new controller method in the existing REST Controllers / modular-monolith API layer to handle order creation while reusing the established HTTP entrypoint conventions. [service:SVC-001, artifact-SVC-001-c3, artifact-SVC-001-c4]
-  2. Integrate the new '/orders' endpoint with the Authentication Facade and Authorization Client components so that only authenticated and appropriately authorized callers can create orders, following the existing JWT bearer and RBAC patterns. [artifact-SVC-001-api_spec, artifact-SVC-001-c3]
-  3. Add or extend an application service within SVC-001 to encapsulate the 'create order' use case, performing orchestrated validation of customer ID, product ID, and quantity > 0 before any persistence, consistent with existing DDD-style application services. [service:SVC-001, artifact-SVC-001-c3, artifact-SVC-001-c4]
-  4. Reuse or introduce repository/data access ports and adapters in SVC-001 to look up existing customers and products in the relational OLTP database, ensuring that non-existent customer or product IDs cause the application service to short-circuit with a validation failure and no order persistence. [service:SVC-001]
-  5. Define an Order aggregate/entity and related persistence mapping in the SVC-001 domain and infrastructure layers (or extend an existing one if present in the broader model) to represent created orders, and ensure that only successfully validated requests result in a new Order record. [service:SVC-001]
-  6. Implement transactional boundaries around order creation in SVC-001 so that validation failures (unknown customer, unknown product, or non-positive quantity) result in a fully rolled-back transaction with no persisted Order record, satisfying FR-US-002-006. [service:SVC-001]
-  7. Design the '/orders' endpoint's success response to return HTTP 2xx and a representation of the newly created Order, aligned with FR-US-002-001 and FR-US-002-002, without over-specifying the response schema beyond what existing API conventions in SVC-001 dictate. [artifact-SVC-001-api_spec, service:SVC-001]
-  8. Implement consistent error handling for the '/orders' endpoint so that validation failures for non-existent customer, non-existent product, or invalid quantity each result in HTTP 400 Bad Request, with error payloads that indicate the specific type of failure while conforming to existing error-shaping conventions (where defined) in SVC-001. [artifact-SVC-001-api_spec, service:SVC-001]
-  9. Ensure that when multiple validation errors are present in a single request, the '/orders' endpoint still returns HTTP 400 Bad Request and does not create an order, without constraining whether one or multiple error reasons are surfaced, preserving FR-US-002-007's flexibility. [service:SVC-001]
-  10. Add logging and, where appropriate, audit hooks to the new '/orders' flow consistent with SVC-001's existing observability and audit patterns, without changing any global logging or audit infrastructure dependencies. [service:SVC-001]
+## API Contract Impact
+- Introduce or standardize GET /api/trainers within SVC-007 (Trainer Management Core Application Service) as the trainer directory endpoint that supports structured filters (status, OEM certification identifiers, allocation state, location, weekend availability) and an optional free-text search term for name, email, or employee identifier. [evidence: story:US-002, AC:US-002-ac-1, AC:US-002-ac-2, spec_technical_design:design_steps[1]]
+- Extend the query parameter set of GET /api/trainers to include allocation-state filters, OEM certification identifiers, location, weekend-availability flag, and a free-text search term while preserving existing behavior for any previously supported parameters. [evidence: story:US-002, AC:US-002-ac-1, AC:US-002-ac-2, spec_technical_design:design_steps[1], spec_technical_design:design_steps[2]]
+- Extend the response model for each trainer entry returned by GET /api/trainers to include: (a) per-trainer allocation state indicators (free, tentative, confirmed); (b) identifiers and routing information sufficient to navigate to trainer profile flows backed by CreateTrainer, UpdateTrainer, and GetTrainerById; and (c) trainer and availability identifiers required for downstream POST /api/v1/workshops/{id}/allocate-trainer calls. [evidence: story:US-002, AC:US-002-ac-4, AC:US-002-ac-5, AC:US-002-ac-6, spec_technical_design:design_steps[6], spec_technical_design:design_steps[7]]
 
-## Security, Quality, and Non-functional Obligations
-- Security obligations:
-  - Validate credential and personal-data handling against the story's acceptance criteria.
-- Quality attribute obligations:
-  - Verify the changed user flow against the stated accessibility criteria.
+## Success Criteria
+- **US-002-ac-1**: When the UI requests trainer directory results via GET /api/v1/trainers with query parameters for status, OEM certification identifiers, allocation state, location, and weekend availability, the Trainer Application Service SearchTrainers query combines all provided filters so that only trainers satisfying every specified criterion are returned from Trainer Repository SearchTrainers.
+- **US-002-ac-2**: When the UI includes a free text search term (covering trainer name, email, or employee identifier) alongside structured filters in GET /api/v1/trainers, the Trainer Domain Services apply the text term against the appropriate trainer fields and intersect those matches with the structured filter set before returning the paged result to the client.
+- **US-002-ac-3**: When the trainer dataset volume is at expected production scale, the Trainer Repository SearchTrainers operation executing behind GET /api/v1/trainers must return the initial page of results within the agreed performance threshold, as measured by Logging and Monitoring Component metrics, without timing out or degrading other transactional workloads.
+- **US-002-ac-4**: When the client requests trainer directory data including allocation state indicators, Trainer Application Service uses GetTrainerAllocations together with Workshop and Allocation Repository data to derive and return per trainer allocation flags for free, tentative, and confirmed states in the GET /api/v1/trainers response model.
+- **US-002-ac-5**: When a user selects an individual trainer from the directory results and chooses to view the profile, GET /api/v1/trainers responds with enough identifier and routing information for the frontend to navigate to the detailed trainer profile view backed by CreateTrainer, UpdateTrainer, and GetTrainerById flows without additional lookup calls for basic identity fields.
+- **US-002-ac-6**: When a user selects an individual trainer from the directory results and chooses to initiate an allocation, GET /api/v1/trainers returns trainer and availability identifiers required for downstream POST /api/v1/workshops/{id}/allocate-trainer calls, and Workshop and Allocation Application Service AllocateTrainer enforces availability and conflict rules before confirming the allocation.
+- **US-002-ac-7**: Whenever a trainer search or filter operation completes through GET /api/v1/trainers, the HTTP API Controller Layer invokes Logging and Monitoring Component to emit a structured log entry including the authenticated user, timestamp, and high level filter criteria used for the search, ensuring any sensitive free text is not logged in full but is either omitted or appropriately masked according to logging policy.
 
-## Traceability and Test Obligations
-- Clauses and traceability:
-  - US-002-ac-1 → acceptance_criterion, tier B, trust_status HYPOTHESIS.
-  - US-002-ac-2 → acceptance_criterion, tier B, trust_status HYPOTHESIS.
-  - US-002-ac-3 → acceptance_criterion, tier B, trust_status HYPOTHESIS.
-  - US-002-ac-4 → acceptance_criterion, tier B, trust_status HYPOTHESIS.
-  - US-002-ac-5 → acceptance_criterion, tier B, trust_status HYPOTHESIS.
-- Expected evidence:
-  - test result for US-002-ac-1
-  - test result for US-002-ac-2
-  - test result for US-002-ac-3
-  - test result for US-002-ac-4
-  - test result for US-002-ac-5
-- Test obligations (all required before release in CI environment):
-  - bb21c484-7d07-4825-a021-6cb339f07906:test:acceptance:US-002-ac-1 → Ensure that the POST request to '/orders' endpoint correctly creates an order when given valid customer ID, product ID, and quantity greater than zero, by returning a 2xx status and the new order details.
-  - bb21c484-7d07-4825-a021-6cb339f07906:test:acceptance:US-002-ac-2 → Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent customer ID, correctly indicating that the customer does not exist.
-  - bb21c484-7d07-4825-a021-6cb339f07906:test:acceptance:US-002-ac-3 → Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent product ID, correctly indicating that the product does not exist.
-  - bb21c484-7d07-4825-a021-6cb339f07906:test:acceptance:US-002-ac-4 → Implement validation at the '/orders' endpoint to return a 400 Bad Request status when an order creation attempt is made with a quantity less than or equal to zero, correctly indicating that the quantity is invalid.
-  - bb21c484-7d07-4825-a021-6cb339f07906:test:acceptance:US-002-ac-5 → Ensure that no orders exist in the system that correspond to failed order creation attempts due to validation errors such as unknown customer, unknown product, or non-positive quantity.
-- Test plan (per acceptance criterion):
-  - US-002-ac-1: Ensure that the POST request to '/orders' endpoint correctly creates an order when given valid customer ID, product ID, and quantity greater than zero, by returning a 2xx status and the new order details.
-  - US-002-ac-2: Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent customer ID, correctly indicating that the customer does not exist.
-  - US-002-ac-3: Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent product ID, correctly indicating that the product does not exist.
-  - US-002-ac-4: Implement validation at the '/orders' endpoint to return a 400 Bad Request status when an order creation attempt is made with a quantity less than or equal to zero, correctly indicating that the quantity is invalid.
-  - US-002-ac-5: Ensure that no orders exist in the system that correspond to failed order creation attempts due to validation errors such as unknown customer, unknown product, or non-positive quantity.
-- Traceability matrix:
-  - US-002-ac-1 → spec_functional
-  - US-002-ac-2 → spec_functional
-  - US-002-ac-3 → spec_functional
-  - US-002-ac-4 → spec_functional
-  - US-002-ac-5 → spec_functional
-
-## Known Gaps and Ambiguities
-- The story title and broader description in the original requirement context refer to trainer directory search and filtering, which is not aligned with the POST '/orders' functionality specified here. This export preserves the functional and technical specification as approved, without reconciling that mismatch.
-- The exact schema of the "new order details" in the success response and error payload structures for validation failures are explicitly left unspecified by FR-US-002-002 and related requirements.
-- Referenced artifacts (artifact-SVC-001-api_spec, artifact-SVC-001-c3, artifact-SVC-001-c4, service:SVC-001) are unresolved in this export and MUST be consulted separately once available.
-
-## Success Criteria (Acceptance Criteria Re-stated)
-- **US-002-ac-1**: Ensure that the POST request to '/orders' endpoint correctly creates an order when given valid customer ID, product ID, and quantity greater than zero, by returning a 2xx status and the new order details.
-- **US-002-ac-2**: Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent customer ID, correctly indicating that the customer does not exist.
-- **US-002-ac-3**: Validate that the '/orders' endpoint returns a 400 Bad Request status when an order creation attempt is made with a non-existent product ID, correctly indicating that the product does not exist.
-- **US-002-ac-4**: Implement validation at the '/orders' endpoint to return a 400 Bad Request status when an order creation attempt is made with a quantity less than or equal to zero, correctly indicating that the quantity is invalid.
-- **US-002-ac-5**: Ensure that no orders exist in the system that correspond to failed order creation attempts due to validation errors such as unknown customer, unknown product, or non-positive quantity.
+## Gaps and Ambiguities
+- Behavior when a particular filter parameter is omitted or null is not further constrained by this story and must not be assumed. [from FR-US-002-001]
+- Exact free-text matching behavior (case sensitivity, partial vs exact match, tokenization) is not specified by this story and remains an explicit ambiguity to be resolved elsewhere. [from FR-US-002-002]
+- Precise numeric performance threshold is not defined in this story and must be established outside this specification. [from FR-US-002-003]
+- Representation of overlapping or conflicting allocation states is not specified and is noted but not resolved here. [from FR-US-002-004]
+- Exact set of required identity and routing fields in the trainer response is not enumerated and remains an implementation detail to be defined consistently across flows. [from FR-US-002-005]
+- Detailed availability and conflict rule set for AllocateTrainer is not defined in this story and is treated as an external dependency. [from FR-US-002-006]
+- Exact masking strategy and which portions of free text are considered sensitive are not specified and remain governed by the external logging policy. [from FR-US-002-007]
 
 ## Provenance
+- **Functional spec source**: spec_functional (gate 3)
+- **Technical design source**: spec_technical_design (gate 4, degraded: true)
+- **API impact source**: spec_api_impact (gate 5, status: ready)
+- **Implementation spec source**: implementation_specification (story:US-002)
+- **Accepted impact revision**: none (accepted_impact_hash: null)
+- **Evidence references**: service:SVC-007, story:US-002, FR-US-002-001, FR-US-002-002, FR-US-002-003, FR-US-002-004, FR-US-002-005, FR-US-002-006, FR-US-002-007, AC:US-002-ac-1, AC:US-002-ac-2, AC:US-002-ac-3, AC:US-002-ac-4, AC:US-002-ac-5, AC:US-002-ac-6, AC:US-002-ac-7, spec_technical_design:design_steps[1], spec_technical_design:design_steps[2], spec_technical_design:design_steps[6], spec_technical_design:design_steps[7]
 - **Policy version**: `ace-spec-format/v1`
-- **Repository baseline commit**: `ccc7186e6d5b76652403be19310221aece77ee26`
-- **Source implementation_specification hash**: `sha256:009643d53450ced002896c0657e1240e540150b94bbefeb0b28c92cd0075a9f0`
-- **Accepted impact revision**: none (no accepted_impact_hash provided).
-- **Generation metadata** (informational): AI-generated functional, technical design, and API impact artifacts with gate levels 3–5, model `gpt-5.1`, prompts `SPEC_FUNCTIONAL_GENERATE`, `SPEC_TECHNICAL_DESIGN_GENERATE`, `SPEC_API_IMPACT_ANALYZE`.
+- **Repository baseline commit**: `b326f7c554fdf7b70149bf6a99db6a1e2d7cc1c9`
