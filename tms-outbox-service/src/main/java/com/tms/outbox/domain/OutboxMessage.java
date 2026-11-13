@@ -121,11 +121,18 @@ public class OutboxMessage {
     }
     this.status = OutboxStatus.PENDING;
     this.nextRetryAt = at;
+    this.processedAt = null;
   }
 
+  /**
+   * Terminal failure (retries exhausted or rejected). US-001 (FR-US-001-006): {@code processedAt}
+   * records when the terminal outcome was reached; {@code retryCount} and {@code lastError} keep
+   * the final attempt's values.
+   */
   public void moveToDeadLetter() {
     this.status = OutboxStatus.DEAD_LETTER;
     this.nextRetryAt = null;
+    this.processedAt = Instant.now();
   }
 
   /**

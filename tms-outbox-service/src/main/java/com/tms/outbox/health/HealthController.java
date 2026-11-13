@@ -54,7 +54,8 @@ public class HealthController {
             new Components(
                 status(parts.get("db")),
                 status(parts.get("processor")),
-                status(parts.get("messageBroker"))));
+                status(parts.get("messageBroker")),
+                status(parts.get("outboxPublishing"))));
     return ResponseEntity.status(up ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).body(body);
   }
 

@@ -3,6 +3,7 @@ package com.tms.outbox.infrastructure.persistence;
 import com.tms.outbox.domain.OutboxMessage;
 import com.tms.outbox.domain.OutboxStatus;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -50,6 +51,15 @@ interface SpringDataOutboxMessageRepository
       @Param("from") Instant from, @Param("to") Instant to);
 
   @Query(
+      "select m.eventType as eventType, m.status as status, count(m) as total"
+          + " from OutboxMessage m where m.eventType in :eventTypes"
+          + " and m.createdAt >= :from and m.createdAt <= :to group by m.eventType, m.status")
+  List<EventTypeStatusCount> countByEventTypeAndStatusBetween(
+      @Param("eventTypes") Collection<String> eventTypes,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
+  @Query(
       value =
           "select coalesce(avg(extract(epoch from (processed_at - created_at)) * 1000), 0)"
               + " from outbox_message where status = 'COMPLETED' and processed_at is not null"
@@ -58,6 +68,14 @@ interface SpringDataOutboxMessageRepository
   Double averageProcessingTimeMs(@Param("from") Instant from, @Param("to") Instant to);
 
   interface StatusCount {
+    OutboxStatus getStatus();
+
+    long getTotal();
+  }
+
+  interface EventTypeStatusCount {
+    String getEventType();
+
     OutboxStatus getStatus();
 
     long getTotal();

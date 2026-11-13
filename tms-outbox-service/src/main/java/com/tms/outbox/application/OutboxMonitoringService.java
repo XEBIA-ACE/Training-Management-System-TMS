@@ -1,12 +1,15 @@
 package com.tms.outbox.application;
 
 import com.tms.outbox.api.dto.OutboxStatistics;
+import com.tms.outbox.api.dto.TrainerAllocationOutboxStatistics;
 import com.tms.outbox.domain.OutboxEntryFilter;
 import com.tms.outbox.domain.OutboxEntryNotFoundException;
 import com.tms.outbox.domain.OutboxMessage;
 import com.tms.outbox.domain.OutboxRepository;
 import com.tms.outbox.domain.OutboxStatus;
 import java.time.Instant;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -20,9 +23,13 @@ public class OutboxMonitoringService {
   private static final Instant MAX_DATE = Instant.parse("9999-12-31T23:59:59Z");
 
   private final OutboxRepository outboxRepository;
+  private final TrainerAllocationEventClassifier trainerAllocationEventClassifier;
 
-  public OutboxMonitoringService(OutboxRepository outboxRepository) {
+  public OutboxMonitoringService(
+      OutboxRepository outboxRepository,
+      TrainerAllocationEventClassifier trainerAllocationEventClassifier) {
     this.outboxRepository = outboxRepository;
+    this.trainerAllocationEventClassifier = trainerAllocationEventClassifier;
   }
 
   public OutboxMetricsDTO getOutboxMetrics() {
@@ -73,6 +80,54 @@ public class OutboxMonitoringService {
         outboxRepository.averageProcessingTimeMs(from, to),
         outboxRepository.countByEventTypeBetween(from, to),
         fromDate,
-        toDate);
+        toDate,
+        toStatistics(getTrainerAllocationSnapshot(from, to)));
+  }
+
+  /** US-001 (FR-US-001-010): current allocation/deallocation counts from the outbox table. */
+  public TrainerAllocationOutboxSnapshot getTrainerAllocationSnapshot() {
+    return getTrainerAllocationSnapshot(MIN_DATE, MAX_DATE);
+  }
+
+  private TrainerAllocationOutboxSnapshot getTrainerAllocationSnapshot(Instant from, Instant to) {
+    Map<TrainerAllocationEventType, Map<OutboxStatus, Long>> counts =
+        new EnumMap<>(TrainerAllocationEventType.class);
+    outboxRepository
+        .countByEventTypeAndStatusBetween(trainerAllocationEventClassifier.eventTypes(), from, to)
+        .forEach(
+            (eventType, byStatus) ->
+                trainerAllocationEventClassifier
+                    .classify(eventType)
+                    .ifPresent(
+                        type -> {
+                          Map<OutboxStatus, Long> target =
+                              counts.computeIfAbsent(
+                                  type, key -> new EnumMap<>(OutboxStatus.class));
+                          byStatus.forEach(
+                              (status, total) -> target.merge(status, total, Long::sum));
+                        }));
+    return new TrainerAllocationOutboxSnapshot(counts);
+  }
+
+  private static TrainerAllocationOutboxStatistics toStatistics(
+      TrainerAllocationOutboxSnapshot snapshot) {
+    Map<String, Long> byStatus = new LinkedHashMap<>();
+    for (OutboxStatus status : OutboxStatus.values()) {
+      byStatus.put(status.name(), snapshot.countByStatus(status));
+    }
+    Map<String, Long> byEventType = new LinkedHashMap<>();
+    Map<String, Map<String, Long>> byEventTypeAndStatus = new LinkedHashMap<>();
+    long backlog = 0;
+    for (TrainerAllocationEventType type : TrainerAllocationEventType.values()) {
+      byEventType.put(type.key(), snapshot.countByType(type));
+      Map<String, Long> statuses = new LinkedHashMap<>();
+      for (OutboxStatus status : OutboxStatus.values()) {
+        statuses.put(status.name(), snapshot.count(type, status));
+      }
+      byEventTypeAndStatus.put(type.key(), statuses);
+      backlog += snapshot.backlog(type);
+    }
+    return new TrainerAllocationOutboxStatistics(
+        snapshot.total(), backlog, byStatus, byEventType, byEventTypeAndStatus);
   }
 }

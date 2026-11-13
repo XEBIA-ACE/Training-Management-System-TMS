@@ -15,4 +15,10 @@ public class UnconfiguredMessagePublisher implements MessagePublisher {
     return CompletableFuture.failedFuture(
         new IllegalStateException("No message publisher configured (TMS_OUTBOX_PUBLISHER_TYPE)"));
   }
+
+  /** No broker client is bound, so the message bus is never reachable. */
+  @Override
+  public boolean isConnected() {
+    return false;
+  }
 }
