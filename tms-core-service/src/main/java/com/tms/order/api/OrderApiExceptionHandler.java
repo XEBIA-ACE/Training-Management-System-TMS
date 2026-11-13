@@ -16,7 +16,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/** Maps order API failures onto the shared {@link ErrorResponse} envelope. */
+/**
+ * Maps order API failures onto the shared {@link ErrorResponse} envelope. Unknown customer/product
+ * return 400 per FR-US-002-003/004; the error codes and body shape are provisional local choices.
+ */
 @RestControllerAdvice(assignableTypes = OrderController.class)
 class OrderApiExceptionHandler {
 
@@ -24,14 +27,14 @@ class OrderApiExceptionHandler {
   ResponseEntity<ErrorResponse> customerNotFound(
       CustomerNotFoundException ex, HttpServletRequest request) {
     return respond(
-        ErrorResponse.of(request, HttpStatus.NOT_FOUND, "CUSTOMER_NOT_FOUND", ex.getMessage()));
+        ErrorResponse.of(request, HttpStatus.BAD_REQUEST, "CUSTOMER_NOT_FOUND", ex.getMessage()));
   }
 
   @ExceptionHandler(ProductNotFoundException.class)
   ResponseEntity<ErrorResponse> productNotFound(
       ProductNotFoundException ex, HttpServletRequest request) {
     return respond(
-        ErrorResponse.of(request, HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", ex.getMessage()));
+        ErrorResponse.of(request, HttpStatus.BAD_REQUEST, "PRODUCT_NOT_FOUND", ex.getMessage()));
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)

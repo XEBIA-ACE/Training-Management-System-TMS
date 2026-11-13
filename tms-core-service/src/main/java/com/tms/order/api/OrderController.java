@@ -23,13 +23,12 @@ public class OrderController {
   }
 
   /**
-   * FR-US-002-001..005: 400 when the body or quantity is invalid, otherwise 201 Created with the
-   * order ID and details.
+   * FR-US-002-001..006: 400 when the customer or product does not exist or the quantity is
+   * invalid, otherwise 201 Created with the order ID and details.
    *
-   * <p>GAP(FR-US-002-001/002): the failure response for an unknown customer/product is unspecified;
-   * 404 with {@code CUSTOMER_NOT_FOUND} / {@code PRODUCT_NOT_FOUND} is an implementation choice.
-   * GAP(FR-US-002-004): 201 and the payload shape are likewise a local choice. See
-   * docs/adr/US-002-orders-unspecified-behavior.md.
+   * <p>GAP(FR-US-002-002/003/004/005): error codes ({@code CUSTOMER_NOT_FOUND}, {@code
+   * PRODUCT_NOT_FOUND}, {@code VALIDATION_FAILED}), 201 and the payload shape are provisional local
+   * choices. See docs/adr/US-002-orders-unspecified-behavior.md.
    */
   @PostMapping
   public ResponseEntity<OrderResponse> create(@Valid @RequestBody CreateOrderRequest body) {
