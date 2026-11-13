@@ -1,0 +1,61 @@
+# External Integrations ACL Service (SVC-003) - base configuration.
+# All environment-specific values (URLs, credentials, issuers, endpoints) come from TMS_ACL_*
+# environment variables; nothing secret or environment-specific is hardcoded here. Without any
+# environment variables the service starts with persistence, messaging and JWT validation disabled.
+spring:
+  application:
+    name: tms-integration-acl-service
+  threads:
+    virtual:
+      enabled: true
+  # Persistence is disabled by default so the scaffold starts without a database. Activate the
+  # "persistence" profile (SPRING_PROFILES_ACTIVE=persistence) to enable the PostgreSQL datasource.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  jpa:
+    open-in-view: false
+
+tms:
+  integration-acl:
+    enabled: ${TMS_ACL_ENABLED:true}
+    persistence:
+      enabled: false
+    # TODO SCAFFOLD-SVC-003: broker (RabbitMQ/Kafka) for ACLChanged / ProviderConfigChanged events is
+    # not decided in the export; this placeholder stays disabled and no client is wired.
+    messaging:
+      enabled: ${TMS_ACL_MESSAGING_ENABLED:false}
+    security:
+      jwt:
+        # Bearer JWT from the central IdP. When neither is set, all /api/** calls are rejected (401).
+        issuer-uri: ${TMS_ACL_JWT_ISSUER_URI:}
+        jwk-set-uri: ${TMS_ACL_JWT_JWK_SET_URI:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  tracing:
+    # TODO SCAFFOLD-SVC-003: OpenTelemetry exporter/collector setup is unspecified. The OTLP exporter
+    # is only created when MANAGEMENT_OTLP_TRACING_ENDPOINT is set; otherwise tracing is a no-op.
+    enabled: ${TMS_ACL_TRACING_ENABLED:true}
+    sampling:
+      probability: ${TMS_ACL_TRACING_SAMPLING_PROBABILITY:0.1}
+
+server:
+  port: ${TMS_ACL_SERVER_PORT:8082}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+
+logging:
+  level:
+    root: ${TMS_ACL_LOG_LEVEL_ROOT:INFO}
+    com.tms.integrationacl: ${TMS_ACL_LOG_LEVEL_APP:INFO}
