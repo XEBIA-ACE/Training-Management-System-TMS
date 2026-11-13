@@ -11,6 +11,8 @@ import { ScreenPlaceholder } from './screens/common/ScreenPlaceholder';
 import { SignOutScreen } from './screens/common/SignOutScreen';
 import { CoordinatorDashboardScreen } from './screens/dashboard/CoordinatorDashboardScreen';
 import { ManagerDashboardScreen } from './screens/dashboard/ManagerDashboardScreen';
+import { CustomerDetailScreen } from './screens/customers/CustomerDetailScreen';
+import { CustomerListScreen } from './screens/customers/CustomerListScreen';
 import { TrainerListScreen } from './screens/masterdata/TrainerListScreen';
 
 /**
@@ -37,6 +39,8 @@ export function App() {
         <Route path={ROUTES.adminUserEdit.path} element={<UserFormScreen />} />
         <Route path={ROUTES.adminUserRights.path} element={<UserRightsScreen />} />
         <Route path={ROUTES.trainerList.path} element={<TrainerListScreen />} />
+        <Route path={ROUTES.customerList.path} element={<CustomerListScreen />} />
+        <Route path={ROUTES.customerDetail.path} element={<CustomerDetailScreen />} />
         <Route path={ROUTES.profile.path} element={<ProfileScreen />} />
         <Route path={ROUTES.signOut.path} element={<SignOutScreen />} />
         {PLACEHOLDER_ROUTES.filter((route) => route !== ROUTES.signOut).map((route) => (
