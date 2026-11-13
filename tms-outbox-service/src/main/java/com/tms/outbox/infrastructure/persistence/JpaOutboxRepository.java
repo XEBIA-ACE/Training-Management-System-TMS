@@ -5,6 +5,7 @@ import com.tms.outbox.domain.OutboxMessage;
 import com.tms.outbox.domain.OutboxRepository;
 import com.tms.outbox.domain.OutboxStatus;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -112,6 +113,22 @@ public class JpaOutboxRepository implements OutboxRepository {
     Map<String, Long> counts = new LinkedHashMap<>();
     jpa.countByEventTypeBetween(from, to)
         .forEach(row -> counts.put(row.getEventType(), row.getTotal()));
+    return counts;
+  }
+
+  @Override
+  public Map<String, Map<OutboxStatus, Long>> countByEventTypeAndStatusBetween(
+      Collection<String> eventTypes, Instant from, Instant to) {
+    Map<String, Map<OutboxStatus, Long>> counts = new LinkedHashMap<>();
+    if (eventTypes == null || eventTypes.isEmpty()) {
+      return counts;
+    }
+    jpa.countByEventTypeAndStatusBetween(eventTypes, from, to)
+        .forEach(
+            row ->
+                counts
+                    .computeIfAbsent(row.getEventType(), key -> new EnumMap<>(OutboxStatus.class))
+                    .put(row.getStatus(), row.getTotal()));
     return counts;
   }
 

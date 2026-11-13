@@ -53,6 +53,13 @@ tms:
     publisher-type: ${TMS_OUTBOX_PUBLISHER_TYPE:none}
     pending-threshold: ${TMS_OUTBOX_HEALTH_PENDING_THRESHOLD:1000}
     auto-start: ${TMS_OUTBOX_PROCESSOR_AUTO_START:true}
+    # US-001: outbox event types of trainer allocation/deallocation notifications (comma-separated).
+    # OPEN QUESTION (US-001): the event type names are not defined by the spec; see
+    # TrainerNotificationProperties.
+    trainer-notifications:
+      allocation-event-types: ${TMS_OUTBOX_TRAINER_ALLOCATION_EVENT_TYPES:TrainerAllocated}
+      deallocation-event-types: ${TMS_OUTBOX_TRAINER_DEALLOCATION_EVENT_TYPES:TrainerDeallocated}
+      metrics-cache-ttl-ms: ${TMS_OUTBOX_TRAINER_METRICS_CACHE_TTL_MS:5000}
     security:
       jwt:
         # Bearer JWT from the central IdP. Startup fails if neither is set while `required` is true.

@@ -18,4 +18,10 @@ public class KafkaMessagePublisher implements MessagePublisher {
     return CompletableFuture.failedFuture(
         new UnsupportedOperationException("Kafka publishing is not implemented yet"));
   }
+
+  /** No broker client is bound, so the message bus is never reachable. */
+  @Override
+  public boolean isConnected() {
+    return false;
+  }
 }

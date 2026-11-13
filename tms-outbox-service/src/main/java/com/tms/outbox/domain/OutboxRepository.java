@@ -1,6 +1,7 @@
 package com.tms.outbox.domain;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +33,13 @@ public interface OutboxRepository {
   Map<OutboxStatus, Long> countByStatusBetween(Instant from, Instant to);
 
   Map<String, Long> countByEventTypeBetween(Instant from, Instant to);
+
+  /**
+   * Counts entries of the given event types, grouped by event type then status (US-001,
+   * FR-US-001-010). Event types without entries are absent from the result.
+   */
+  Map<String, Map<OutboxStatus, Long>> countByEventTypeAndStatusBetween(
+      Collection<String> eventTypes, Instant from, Instant to);
 
   double averageProcessingTimeMs(Instant from, Instant to);
 

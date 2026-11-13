@@ -43,6 +43,23 @@ Errors use the `ErrorResponse` envelope. The correlation id is read from `X-Corr
 `X-Request-ID`), generated when missing, echoed as `X-Correlation-ID` and logged as MDC
 `correlationId`.
 
+## Trainer allocation/deallocation notifications (US-001)
+
+Outbox entries whose `eventType` is listed in `TMS_OUTBOX_TRAINER_ALLOCATION_EVENT_TYPES`
+(default `TrainerAllocated`) or `TMS_OUTBOX_TRAINER_DEALLOCATION_EVENT_TYPES` (default
+`TrainerDeallocated`) are reported as `allocation` / `deallocation`:
+
+- `GET /api/v1/outbox/stats` → `trainerAllocation` with counts by status, by event type and by
+  event type + status, plus `backlogCount` (PENDING + PROCESSING + FAILED). `DEAD_LETTER` = retries
+  exhausted.
+- `/health` → `outboxPublishing` component: DOWN when the outbox table cannot be read or the message
+  bus is unreachable, UNKNOWN when `TMS_OUTBOX_PUBLISHER_TYPE=none`.
+- `/metrics` → `outbox_trainer_notification_publish_attempts_total{eventCategory,outcome}`,
+  `outbox_trainer_notification_exhausted_total{eventCategory}`,
+  `outbox_trainer_notification_backlog{eventCategory}` and
+  `outbox_trainer_notification_entries{eventCategory,status}` (DB gauges cached for
+  `TMS_OUTBOX_TRAINER_METRICS_CACHE_TTL_MS`, default 5000).
+
 ## Package layout
 
 - `domain` – `OutboxMessage`, `OutboxStatus`, `OutboxEventMetadata`, `OutboxMessageFactory`,
