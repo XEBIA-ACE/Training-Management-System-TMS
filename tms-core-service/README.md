@@ -45,6 +45,7 @@ curl http://localhost:8080/actuator/health   # {"status":"UP",...}
 | other `/actuator/**` | denied / not exposed |
 | `POST /api/auth/login`, `POST /api/auth/refresh` | public only when `TMS_LEGACY_AUTH_ENABLED=true` |
 | `/api/admin/**` | `SUPER_ADMIN` |
+| `/api/v1/customers/**` (US-001) | authenticated bearer JWT (no customer-specific role defined yet) |
 | everything else | authenticated bearer JWT |
 
 Roles are read from the `roles`, `groups` and `app_roles` claims (`ROLE_<value>` authorities);

@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * Body of {@code PUT /api/customers/{id}} (FR-US-001-004): name and/or city. Omitted fields are
+ * Body of {@code PUT /api/v1/customers/{id}} (FR-US-001-AC4): name and/or city. Omitted fields are
  * left unchanged; at least one must be provided and provided values must not be blank.
  */
 public record UpdateCustomerRequest(

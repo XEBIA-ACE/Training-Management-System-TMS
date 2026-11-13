@@ -4,12 +4,14 @@ import com.tms.customer.domain.Customer;
 import com.tms.customer.domain.CustomerNotFoundException;
 import com.tms.customer.domain.CustomerRepository;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Customer use cases for US-001 (FR-US-001-001..FR-US-001-005). */
+/** Customer use cases for US-001 (FR-US-001-AC1..FR-US-001-AC5). */
 @Service
 @Transactional
 public class CustomerService {
@@ -25,8 +27,9 @@ public class CustomerService {
   }
 
   @Transactional(readOnly = true)
-  public List<Customer> list() {
-    return repository.findAllByActiveTrueOrderByNameAsc();
+  public Page<Customer> list(int page, int size) {
+    return repository.findAllByActiveTrue(
+        PageRequest.of(page, size, Sort.by("name").ascending().and(Sort.by("id"))));
   }
 
   @Transactional(readOnly = true)
