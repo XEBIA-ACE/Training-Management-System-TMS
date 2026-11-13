@@ -24,9 +24,9 @@ import { CustomerForm } from './CustomerForm';
 type Notice = { variant: 'error' | 'warning' | 'info'; message: string };
 
 /**
- * SCR-016 Customer List (US-001): lists customers (FR-US-001-002), creates customers
- * (FR-US-001-001) and removes them (FR-US-001-005).
- * GAP(FR-US-001-002): pagination/filtering are not specified; every returned record is rendered.
+ * SCR-016 Customer List (US-001): lists customers (FR-US-001-AC2), creates customers
+ * (FR-US-001-AC1) and removes them (FR-US-001-AC5).
+ * GAP(FR-US-001-AC2): pagination/filtering are not specified; every returned record is rendered.
  */
 export function CustomerListScreen() {
   const [customers, setCustomers] = useState<Customer[] | null>(null);

@@ -29,8 +29,8 @@ type DetailState =
   | { kind: 'error'; message: string };
 
 /**
- * SCR-018 Customer Detail (US-001): views a customer by ID (FR-US-001-003), updates name and/or
- * city (FR-US-001-004) and removes the customer (FR-US-001-005). The customer ID is carried in the
+ * SCR-018 Customer Detail (US-001): views a customer by ID (FR-US-001-AC3), updates name and/or
+ * city (FR-US-001-AC4) and removes the customer (FR-US-001-AC5). The customer ID is carried in the
  * `id` query parameter of the existing `/customers/detail` route.
  */
 export function CustomerDetailScreen() {
