@@ -60,6 +60,15 @@ tms:
       allocation-event-types: ${TMS_OUTBOX_TRAINER_ALLOCATION_EVENT_TYPES:TrainerAllocated}
       deallocation-event-types: ${TMS_OUTBOX_TRAINER_DEALLOCATION_EVENT_TYPES:TrainerDeallocated}
       metrics-cache-ttl-ms: ${TMS_OUTBOX_TRAINER_METRICS_CACHE_TTL_MS:5000}
+    # US-001: pre-send ACL check (POST /api/v1/integration-acl/evaluate). Blank base-url fails
+    # closed (no notification is sent). latency-target-ms is the p95 target and call timeout.
+    acl-evaluation:
+      base-url: ${TMS_OUTBOX_ACL_BASE_URL:}
+      provider-type: ${TMS_OUTBOX_ACL_PROVIDER_TYPE:EMAIL}
+      provider-id: ${TMS_OUTBOX_ACL_PROVIDER_ID:email-gateway}
+      internal-module: ${TMS_OUTBOX_ACL_INTERNAL_MODULE:notifications}
+      operation: ${TMS_OUTBOX_ACL_OPERATION:SEND_EMAIL}
+      latency-target-ms: ${TMS_OUTBOX_ACL_LATENCY_TARGET_MS:200}
     security:
       jwt:
         # Bearer JWT from the central IdP. Startup fails if neither is set while `required` is true.
