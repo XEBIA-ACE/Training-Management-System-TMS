@@ -1,0 +1,72 @@
+.tms-shell {
+  display: grid;
+  grid-template-columns: var(--shell-nav-width) 1fr;
+  grid-template-rows: var(--shell-header-height) 1fr;
+  height: 100%;
+}
+.tms-shell__header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  background: var(--color-secondary-500);
+  color: var(--color-surface-500);
+}
+.tms-shell__brand {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: inherit;
+  text-decoration: none;
+}
+.tms-shell__env {
+  margin-left: var(--space-3);
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+}
+.tms-shell__user {
+  display: flex;
+  gap: var(--space-4);
+}
+.tms-shell__user a {
+  color: inherit;
+}
+.tms-shell__nav {
+  overflow-y: auto;
+  background: var(--color-surface-500);
+  border-right: 1px solid var(--color-border-500);
+  padding: var(--space-3) 0;
+}
+.tms-shell__nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tms-shell__nav-link {
+  display: block;
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+}
+.tms-shell__nav-link--child {
+  padding-left: var(--space-6);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+.tms-shell__nav-link:hover {
+  background: var(--color-background-500);
+}
+.tms-shell__nav-link.active {
+  color: var(--color-primary-500);
+  box-shadow: inset 3px 0 0 var(--color-primary-500);
+}
+.tms-shell__divider {
+  border: 0;
+  border-top: 1px solid var(--color-border-500);
+  margin: var(--space-3) 0;
+}
+.tms-shell__main {
+  overflow-y: auto;
+  padding: var(--space-5);
+}
