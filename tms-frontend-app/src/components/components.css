@@ -1,0 +1,342 @@
+/* Shared component styles. Colors come exclusively from styles/tokens.css. */
+
+/* Primary / Secondary Button: default, hover, active, disabled, focus */
+.tms-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.tms-btn:hover:not(:disabled) {
+  filter: var(--hover-filter);
+}
+.tms-btn:active:not(:disabled) {
+  filter: var(--active-filter);
+}
+.tms-btn:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+.tms-btn--primary {
+  background: var(--color-primary-500);
+  color: var(--color-surface-500);
+}
+.tms-btn--secondary {
+  background: var(--color-surface-500);
+  color: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+}
+
+/* Form fields: Text Input, Dropdown / Select */
+.tms-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 200px;
+}
+.tms-field__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+.tms-field__required {
+  color: var(--color-error-500);
+}
+.tms-field__control {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-500);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-500);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+.tms-field__control:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
+}
+.tms-field__control:focus-visible {
+  border-color: var(--color-info-500);
+}
+.tms-field__control:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  background: var(--color-background-500);
+}
+.tms-field--error .tms-field__control {
+  border-color: var(--color-error-500);
+}
+.tms-field__helper {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.tms-field__error {
+  font-size: var(--font-size-sm);
+  color: var(--color-error-500);
+}
+
+/* Radio Group: default, selected, focus, disabled */
+.tms-radio-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.tms-radio-group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.tms-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.tms-radio input {
+  accent-color: var(--color-primary-500);
+  margin: 0;
+}
+.tms-radio input:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.tms-radio--disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+/* Slider Toggle (Yes/No): on, off, focus, disabled */
+.tms-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tms-toggle__switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-500);
+  cursor: pointer;
+}
+.tms-toggle__switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-surface-500);
+  transition: transform 0.15s ease;
+}
+.tms-toggle__switch[aria-checked='true'] {
+  background: var(--color-accent-500);
+}
+.tms-toggle__switch[aria-checked='true']::after {
+  transform: translateX(18px);
+}
+.tms-toggle__switch:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+.tms-toggle__state {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  min-width: 2em;
+}
+
+/* Table / Data Grid: default, row_hover, row_selected, header */
+.tms-table-wrap {
+  overflow-x: auto;
+  background: var(--color-surface-500);
+  border: 1px solid var(--color-border-500);
+  border-radius: var(--radius-md);
+}
+.tms-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tms-table th,
+.tms-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-500);
+  white-space: nowrap;
+}
+.tms-table th {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  background: var(--color-background-500);
+}
+.tms-table tbody tr:hover {
+  background: var(--color-background-500);
+}
+.tms-table__row--clickable {
+  cursor: pointer;
+}
+.tms-table__row--selected,
+.tms-table tbody tr.tms-table__row--selected:hover {
+  background: var(--color-background-500);
+  box-shadow: inset 3px 0 0 var(--color-primary-500);
+}
+
+/* Status Chip / Tag: confirmed, unconfirmed, pending, error */
+.tms-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid transparent;
+}
+.tms-chip--confirmed {
+  background: var(--color-accent-500);
+  color: var(--color-surface-500);
+}
+.tms-chip--unconfirmed {
+  background: var(--color-warning-500);
+  color: var(--color-text-primary);
+}
+.tms-chip--pending {
+  background: var(--color-surface-500);
+  color: var(--color-info-500);
+  border-color: var(--color-info-500);
+}
+.tms-chip--error {
+  background: var(--color-error-500);
+  color: var(--color-surface-500);
+}
+
+/* Modal / Dialog: default, backdrop */
+.tms-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-secondary-500) 55%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.tms-modal {
+  width: min(520px, calc(100vw - 2 * var(--space-4)));
+  background: var(--color-surface-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.tms-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Slide-over Panel: default */
+.tms-slide-over-backdrop {
+  justify-content: flex-end;
+  align-items: stretch;
+}
+.tms-slide-over {
+  width: min(var(--slide-over-width), 100vw);
+  height: 100%;
+  background: var(--color-surface-500);
+  display: flex;
+  flex-direction: column;
+}
+.tms-slide-over__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-500);
+}
+.tms-slide-over__header h2 {
+  margin: 0;
+}
+.tms-slide-over__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+/* Filter Panel / Chip Filters: filter_chip_default, filter_chip_active */
+.tms-filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.tms-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tms-filter-chip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-500);
+  background: var(--color-surface-500);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.tms-filter-chip:hover {
+  border-color: var(--color-primary-500);
+}
+.tms-filter-chip[aria-pressed='true'] {
+  background: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+  color: var(--color-surface-500);
+}
+
+/* Global Error Banner: error, warning, info */
+.tms-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid;
+  background: var(--color-surface-500);
+}
+.tms-banner--error {
+  border-color: var(--color-error-500);
+}
+.tms-banner--warning {
+  border-color: var(--color-warning-500);
+}
+.tms-banner--info {
+  border-color: var(--color-info-500);
+}
+
+/* Empty State Pattern: default */
+.tms-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.tms-empty-state__title {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+}
