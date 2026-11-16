@@ -1,11 +1,19 @@
 package com.tms.trainer.api;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.tms.trainer.application.TrainerAppService;
+import com.tms.trainer.application.TrainerCreateCommand;
+import com.tms.trainer.application.TrainerValidationException;
+import com.tms.trainer.application.TrainerValidationException.FieldViolation;
 import com.tms.trainer.domain.TrainerSearchCriteria;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,9 +46,11 @@ public class TrainerController {
   static final int MAX_SEARCH_LENGTH = 200;
 
   private final TrainerAppService service;
+  private final ObjectMapper objectMapper;
 
-  public TrainerController(TrainerAppService service) {
+  public TrainerController(TrainerAppService service, ObjectMapper objectMapper) {
     this.service = service;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -72,11 +82,43 @@ public class TrainerController {
   /**
    * US-003: 201 with the created ACTIVE trainer and its derived timeZone; 400 for an invalid
    * TrainerCreateRequest, 401/403 without authentication/TRAINER.MANAGE, 409 for a duplicate
-   * employeeId or email.
+   * employeeId or email. The body is only parsed after the TRAINER.MANAGE check, so an unauthorized
+   * caller gets 403 (and is audited) whatever it sends (FR-US-003-007).
    */
   @PostMapping(V1_BASE_PATH)
-  public ResponseEntity<TrainerResponse> create(@RequestBody TrainerCreateRequest request) {
-    TrainerResponse created = TrainerResponse.from(service.create(request.toCommand()));
+  public ResponseEntity<TrainerResponse> create(@RequestBody(required = false) byte[] body) {
+    TrainerResponse created = TrainerResponse.from(service.create(() -> parse(body)));
     return ResponseEntity.created(URI.create(V1_BASE_PATH + "/" + created.id())).body(created);
+  }
+
+  private TrainerCreateCommand parse(byte[] body) {
+    if (body == null || body.length == 0) {
+      throw invalid("body", "must not be empty");
+    }
+    try {
+      return objectMapper.readValue(body, TrainerCreateRequest.class).toCommand();
+    } catch (MismatchedInputException ex) {
+      throw invalid(
+          ex.getPath().isEmpty() ? "body" : path(ex.getPath()),
+          "Value is not valid for this field.");
+    } catch (IOException ex) {
+      throw invalid("body", "Value is not valid for this field.");
+    }
+  }
+
+  private static TrainerValidationException invalid(String field, String message) {
+    return new TrainerValidationException(List.of(new FieldViolation(field, message)));
+  }
+
+  private static String path(List<JsonMappingException.Reference> references) {
+    StringBuilder path = new StringBuilder();
+    for (JsonMappingException.Reference reference : references) {
+      if (reference.getFieldName() != null) {
+        path.append(path.isEmpty() ? "" : ".").append(reference.getFieldName());
+      } else if (reference.getIndex() >= 0) {
+        path.append('[').append(reference.getIndex()).append(']');
+      }
+    }
+    return path.toString();
   }
 }

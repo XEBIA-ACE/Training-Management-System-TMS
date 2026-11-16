@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -146,9 +147,10 @@ public class TrainerAppService {
    * Order: TRAINER.MANAGE check (FR-US-003-007), TrainerCreateRequest validation
    * (FR-US-003-001/002), uniqueness across all trainers (FR-US-003-003), then the trainer and its
    * CREATE audit entry (FR-US-003-006) are written in one transaction, so a failure at any step
-   * persists neither.
+   * persists neither. {@code request} (the parsed body) is only evaluated after authorization; it
+   * may throw {@link TrainerValidationException} for an unreadable body.
    */
-  public TrainerProfile create(TrainerCreateCommand command) {
+  public TrainerProfile create(Supplier<TrainerCreateCommand> request) {
     AuthContext actor =
         authorize(
             CREATE_ACTION,
@@ -157,6 +159,7 @@ public class TrainerAppService {
             managementProperties.audit().unauthorizedAccessEnabled(),
             "MISSING_TRAINER_MANAGE_PERMISSION",
             "Trainer management access denied");
+    TrainerCreateCommand command = request.get();
     List<TrainerValidationException.FieldViolation> violations = createValidator.validate(command);
     if (!violations.isEmpty()) {
       meterRegistry.counter("tms.trainer.create.rejected", "reason", "validation").increment();

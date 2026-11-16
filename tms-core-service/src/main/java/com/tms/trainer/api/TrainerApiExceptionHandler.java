@@ -1,7 +1,5 @@
 package com.tms.trainer.api;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.tms.crosscutting.web.CorrelationIdFilter;
 import com.tms.crosscutting.web.ErrorResponse;
 import com.tms.crosscutting.web.ValidationErrorItem;
@@ -13,7 +11,6 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -56,32 +53,6 @@ class TrainerApiExceptionHandler {
             ex.violations().stream()
                 .map(v -> new ValidationErrorItem(v.field(), v.message()))
                 .toList()));
-  }
-
-  /** A body that is not JSON, or a field of the wrong JSON type (e.g. a malformed UUID). */
-  @ExceptionHandler(HttpMessageNotReadableException.class)
-  ResponseEntity<ErrorResponse> unreadableBody(
-      HttpMessageNotReadableException ex, HttpServletRequest request) {
-    String field =
-        ex.getCause() instanceof MismatchedInputException mismatch && !mismatch.getPath().isEmpty()
-            ? path(mismatch.getPath())
-            : "body";
-    return respond(
-        validationFailed(
-            request,
-            List.of(new ValidationErrorItem(field, "Value is not valid for this field."))));
-  }
-
-  private static String path(List<JsonMappingException.Reference> references) {
-    StringBuilder path = new StringBuilder();
-    for (JsonMappingException.Reference reference : references) {
-      if (reference.getFieldName() != null) {
-        path.append(path.isEmpty() ? "" : ".").append(reference.getFieldName());
-      } else if (reference.getIndex() >= 0) {
-        path.append('[').append(reference.getIndex()).append(']');
-      }
-    }
-    return path.toString();
   }
 
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)

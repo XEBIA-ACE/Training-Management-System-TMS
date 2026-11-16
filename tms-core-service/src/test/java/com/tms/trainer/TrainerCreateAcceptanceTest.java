@@ -172,6 +172,17 @@ class TrainerCreateAcceptanceTest {
     badUuid.put("certificationIds", List.of("not-a-uuid"));
     assertThat(fields(json(create(badUuid, manager()).andExpect(status().isBadRequest()))))
         .containsExactly("certificationIds[0]");
+    assertThat(
+            fields(
+                json(
+                    mockMvc
+                        .perform(
+                            post(TRAINERS_V1)
+                                .with(manager())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{not json"))
+                        .andExpect(status().isBadRequest()))))
+        .containsExactly("body");
 
     assertThat(trainerCount()).isEqualTo(1);
   }
@@ -402,6 +413,13 @@ class TrainerCreateAcceptanceTest {
     Map<String, Object> invalid = new LinkedHashMap<>();
     invalid.put("trainerType", "INTERNAL");
     json(create(invalid, token("viewer-1", "ROLE_OPS_MONITOR")).andExpect(status().isForbidden()));
+    mockMvc
+        .perform(
+            post(TRAINERS_V1)
+                .with(token("viewer-1", "ROLE_OPS_MONITOR"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{not json"))
+        .andExpect(status().isForbidden());
 
     assertThat(valid.path("code").asText()).isEqualTo("ACCESS_DENIED");
     assertThat(trainerCount()).isEqualTo(1);
@@ -410,7 +428,7 @@ class TrainerCreateAcceptanceTest {
         jdbc.queryForList(
             "select actor, action, details::text as details from tms.audit_log_entry where"
                 + " entry_type = 'UNAUTHORIZED_ACCESS'");
-    assertThat(denied).hasSize(2);
+    assertThat(denied).hasSize(3);
     assertThat(denied)
         .allSatisfy(
             row -> {
