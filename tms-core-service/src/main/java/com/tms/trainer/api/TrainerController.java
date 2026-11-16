@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  */
 @RestController
-@RequestMapping({TrainerController.BASE_PATH, TrainerController.V1_BASE_PATH})
 public class TrainerController {
 
   public static final String BASE_PATH = "/api/trainers";
@@ -49,7 +47,7 @@ public class TrainerController {
    * FR-US-002-001/002: trainers matching all supplied filters, ordered by name. Page size is capped
    * at {@value #MAX_PAGE_SIZE} to bound query cost (FR-US-002-003).
    */
-  @GetMapping
+  @GetMapping({BASE_PATH, V1_BASE_PATH})
   public PagedTrainerList search(
       @RequestParam(required = false) String status,
       @RequestParam(required = false) UUID certificationId,
@@ -66,7 +64,7 @@ public class TrainerController {
   }
 
   /** FR-US-002-004: 200 with the trainer, 403 without a directory role, 404 when unknown. */
-  @GetMapping("/{id}")
+  @GetMapping({BASE_PATH + "/{id}", V1_BASE_PATH + "/{id}"})
   public TrainerResponse get(@PathVariable UUID id) {
     return TrainerResponse.from(service.get(id));
   }
@@ -76,7 +74,7 @@ public class TrainerController {
    * TrainerCreateRequest, 401/403 without authentication/TRAINER.MANAGE, 409 for a duplicate
    * employeeId or email.
    */
-  @PostMapping
+  @PostMapping(V1_BASE_PATH)
   public ResponseEntity<TrainerResponse> create(@RequestBody TrainerCreateRequest request) {
     TrainerResponse created = TrainerResponse.from(service.create(request.toCommand()));
     return ResponseEntity.created(URI.create(V1_BASE_PATH + "/" + created.id())).body(created);

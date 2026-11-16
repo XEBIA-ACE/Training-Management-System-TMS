@@ -314,6 +314,20 @@ class TrainerCreateAcceptanceTest {
             .andExpect(jsonPath("$.status").value("ACTIVE")));
   }
 
+  @Test
+  @DisplayName("[US-003-ac-5][FR-US-003-005][T012] the legacy /api/trainers path stays read-only")
+  void legacyPathDoesNotCreate() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/trainers")
+                .with(manager())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(internal("E501", "legacy@corp.com"))))
+        .andExpect(status().isMethodNotAllowed());
+
+    assertThat(trainerCount()).isEqualTo(1);
+  }
+
   // --- US-003-ac-6 / FR-US-003-006 / T013 ------------------------------------------------------
 
   @Test
