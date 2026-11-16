@@ -24,6 +24,9 @@ import org.springframework.security.web.SecurityFilterChain;
  *   <li>{@code POST /api/auth/login|refresh}: public only when legacy auth is enabled.
  *   <li>{@code /api/v1/customers/**} (US-001): authenticated bearer token. GAP(US-001): no
  *       customer-specific roles/permissions are specified, so no role restriction is applied.
+ *   <li>{@code /api/trainers/**} (US-002): authenticated bearer token; the trainer directory role
+ *       check (403 + UnauthorizedAccessEntry) is applied by TrainerAppService via {@link
+ *       AuthContextProvider}.
  *   <li>Everything else: authenticated bearer token.
  * </ul>
  */
@@ -67,6 +70,7 @@ public class SecurityConfig {
               }
               auth.requestMatchers("/api/admin/**").hasRole(TmsRoles.SUPER_ADMIN);
               auth.requestMatchers("/api/v1/customers", "/api/v1/customers/**").authenticated();
+              auth.requestMatchers("/api/trainers", "/api/trainers/**").authenticated();
               auth.anyRequest().authenticated();
             })
         .oauth2ResourceServer(

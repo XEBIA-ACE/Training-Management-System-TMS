@@ -23,8 +23,8 @@ public class OrderController {
   }
 
   /**
-   * FR-US-002-001..006: 400 when the customer or product does not exist or the quantity is
-   * invalid, otherwise 201 Created with the order ID and details.
+   * FR-US-002-001..006: 400 when the customer or product does not exist or the quantity is invalid,
+   * otherwise 201 Created with the order ID and details.
    *
    * <p>GAP(FR-US-002-002/003/004/005): error codes ({@code CUSTOMER_NOT_FOUND}, {@code
    * PRODUCT_NOT_FOUND}, {@code VALIDATION_FAILED}), 201 and the payload shape are provisional local

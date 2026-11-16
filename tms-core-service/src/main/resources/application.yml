@@ -62,6 +62,13 @@ tms:
     legacy-auth:
       enabled: ${TMS_LEGACY_AUTH_ENABLED:false}
     openapi-public: ${TMS_OPENAPI_PUBLIC:false}
+  trainer:
+    directory:
+      # US-002: roles allowed to search trainers / view trainer profiles (fail-closed default).
+      roles: ${TMS_TRAINER_DIRECTORY_ROLES:SUPER_ADMIN}
+      audit:
+        search-enabled: ${TMS_TRAINER_AUDIT_SEARCH_ENABLED:true}
+        unauthorized-access-enabled: ${TMS_TRAINER_AUDIT_UNAUTHORIZED_ENABLED:true}
 
 springdoc:
   api-docs:
