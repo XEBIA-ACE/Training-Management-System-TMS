@@ -69,6 +69,13 @@ tms:
       audit:
         search-enabled: ${TMS_TRAINER_AUDIT_SEARCH_ENABLED:true}
         unauthorized-access-enabled: ${TMS_TRAINER_AUDIT_UNAUTHORIZED_ENABLED:true}
+    management:
+      # US-003: roles holding TRAINER.MANAGE, i.e. allowed to POST /api/v1/trainers (fail-closed default).
+      roles: ${TMS_TRAINER_MANAGE_ROLES:SUPER_ADMIN}
+      # US-003 (FR-US-003-004): comma-separated <location>=<IANA zone id> rules, e.g. Pune=Asia/Kolkata.
+      location-time-zones: ${TMS_TRAINER_LOCATION_TIME_ZONES:}
+      audit:
+        unauthorized-access-enabled: ${TMS_TRAINER_MANAGE_AUDIT_UNAUTHORIZED_ENABLED:true}
 
 springdoc:
   api-docs:

@@ -11,6 +11,10 @@ import java.util.UUID;
  *
  * <p>GAP(FR-US-002-005): the story does not enumerate "basic" trainer attributes; this set is the
  * provisional choice (see docs/adr/US-002-trainer-directory-gaps.md).
+ *
+ * <p>US-003 adds the TrainerCreateRequest attributes ({@code trainerType}, {@code location},
+ * derived {@code timeZone}, {@code msaNdaStatus}, {@code msaNdaReference}); {@code POST
+ * /api/v1/trainers} returns this shape. They are {@code null} for trainers created before US-003.
  */
 public record TrainerResponse(
     UUID id,
@@ -21,7 +25,12 @@ public record TrainerResponse(
     String availabilityState,
     UUID locationId,
     boolean weekendAvailable,
-    List<UUID> certificationIds) {
+    List<UUID> certificationIds,
+    String trainerType,
+    String location,
+    String timeZone,
+    String msaNdaStatus,
+    String msaNdaReference) {
 
   static TrainerResponse from(TrainerProfile p) {
     return new TrainerResponse(
@@ -33,6 +42,11 @@ public record TrainerResponse(
         p.availabilityState(),
         p.locationId(),
         p.weekendAvailable(),
-        p.certificationIds());
+        p.certificationIds(),
+        p.trainerType(),
+        p.location(),
+        p.timeZone(),
+        p.msaNdaStatus(),
+        p.msaNdaReference());
   }
 }

@@ -3,6 +3,8 @@ package com.tms.trainer.api;
 import com.tms.crosscutting.web.CorrelationIdFilter;
 import com.tms.crosscutting.web.ErrorResponse;
 import com.tms.crosscutting.web.ValidationErrorItem;
+import com.tms.trainer.application.TrainerValidationException;
+import com.tms.trainer.domain.DuplicateTrainerException;
 import com.tms.trainer.domain.TrainerNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -22,6 +24,35 @@ class TrainerApiExceptionHandler {
   ResponseEntity<ErrorResponse> notFound(TrainerNotFoundException ex, HttpServletRequest request) {
     return respond(
         ErrorResponse.of(request, HttpStatus.NOT_FOUND, "TRAINER_NOT_FOUND", ex.getMessage()));
+  }
+
+  /** FR-US-003-003: distinct codes TRAINER_DUPLICATE_EMPLOYEE_ID / TRAINER_DUPLICATE_EMAIL. */
+  @ExceptionHandler(DuplicateTrainerException.class)
+  ResponseEntity<ErrorResponse> duplicate(
+      DuplicateTrainerException ex, HttpServletRequest request) {
+    HttpStatus status = HttpStatus.CONFLICT;
+    return respond(
+        new ErrorResponse(
+            Instant.now(),
+            CorrelationIdFilter.currentTraceId(request),
+            request.getRequestURI(),
+            status.value(),
+            status.getReasonPhrase(),
+            ex.conflict().errorCode(),
+            ex.getMessage(),
+            List.of(new ValidationErrorItem(ex.conflict().field(), ex.getMessage()))));
+  }
+
+  /** FR-US-003-001/002: every invalid TrainerCreateRequest field as a ValidationError. */
+  @ExceptionHandler(TrainerValidationException.class)
+  ResponseEntity<ErrorResponse> invalidTrainer(
+      TrainerValidationException ex, HttpServletRequest request) {
+    return respond(
+        validationFailed(
+            request,
+            ex.violations().stream()
+                .map(v -> new ValidationErrorItem(v.field(), v.message()))
+                .toList()));
   }
 
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)

@@ -27,6 +27,9 @@ import org.springframework.security.web.SecurityFilterChain;
  *   <li>{@code /api/trainers/**} (US-002): authenticated bearer token; the trainer directory role
  *       check (403 + UnauthorizedAccessEntry) is applied by TrainerAppService via {@link
  *       AuthContextProvider}.
+ *   <li>{@code /api/v1/trainers/**} (US-003): authenticated bearer token; {@code POST} additionally
+ *       requires a role holding TRAINER.MANAGE (403 + UnauthorizedAccessEntry), checked by
+ *       TrainerAppService via {@link AuthContextProvider}.
  *   <li>Everything else: authenticated bearer token.
  * </ul>
  */
@@ -71,6 +74,7 @@ public class SecurityConfig {
               auth.requestMatchers("/api/admin/**").hasRole(TmsRoles.SUPER_ADMIN);
               auth.requestMatchers("/api/v1/customers", "/api/v1/customers/**").authenticated();
               auth.requestMatchers("/api/trainers", "/api/trainers/**").authenticated();
+              auth.requestMatchers("/api/v1/trainers", "/api/v1/trainers/**").authenticated();
               auth.anyRequest().authenticated();
             })
         .oauth2ResourceServer(

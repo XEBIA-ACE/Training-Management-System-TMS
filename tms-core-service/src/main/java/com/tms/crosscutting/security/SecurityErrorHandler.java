@@ -6,6 +6,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -19,10 +21,12 @@ import org.springframework.stereotype.Component;
 /**
  * Writes 401/403 security failures as the API {@link ErrorResponse} envelope (codes {@code
  * AUTHENTICATION_FAILED} / {@code ACCESS_DENIED}) while keeping RFC 6750 {@code WWW-Authenticate}
- * headers.
+ * headers. Every rejection is logged as a security event (method, path, code; no credentials).
  */
 @Component
 public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(SecurityErrorHandler.class);
 
   private final AuthenticationEntryPoint bearerEntryPoint =
       new BearerTokenAuthenticationEntryPoint();
@@ -70,6 +74,11 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
       String code,
       String message)
       throws IOException {
+    log.warn(
+        "Security event: request rejected code={} method={} path={}",
+        code,
+        request.getMethod(),
+        request.getRequestURI());
     response.setStatus(status.value());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     objectMapper.writeValue(
