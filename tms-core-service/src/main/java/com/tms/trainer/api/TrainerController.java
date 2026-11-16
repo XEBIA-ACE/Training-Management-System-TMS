@@ -96,7 +96,11 @@ public class TrainerController {
       throw invalid("body", "must not be empty");
     }
     try {
-      return objectMapper.readValue(body, TrainerCreateRequest.class).toCommand();
+      TrainerCreateRequest request = objectMapper.readValue(body, TrainerCreateRequest.class);
+      if (request == null) {
+        throw invalid("body", "must not be empty");
+      }
+      return request.toCommand();
     } catch (MismatchedInputException ex) {
       throw invalid(
           ex.getPath().isEmpty() ? "body" : path(ex.getPath()),

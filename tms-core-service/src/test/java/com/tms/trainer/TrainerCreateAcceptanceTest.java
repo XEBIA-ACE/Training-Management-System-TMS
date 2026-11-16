@@ -183,6 +183,17 @@ class TrainerCreateAcceptanceTest {
                                 .content("{not json"))
                         .andExpect(status().isBadRequest()))))
         .containsExactly("body");
+    assertThat(
+            fields(
+                json(
+                    mockMvc
+                        .perform(
+                            post(TRAINERS_V1)
+                                .with(manager())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("null"))
+                        .andExpect(status().isBadRequest()))))
+        .containsExactly("body");
 
     assertThat(trainerCount()).isEqualTo(1);
   }
