@@ -69,6 +69,20 @@ export const ROUTES = {
     title: 'Trainer Management – List',
     scaffolded: true,
   },
+  // TODO(US-003): screen IDs for these two routes are not in the exported screen list; reusing the
+  // Trainer Management family (SCR-010) with story-scoped suffixes.
+  trainerCreate: {
+    screenId: 'SCR-010-create',
+    path: '/trainers/new',
+    title: 'Create Trainer Profile',
+    scaffolded: true,
+  },
+  trainerAudit: {
+    screenId: 'SCR-010-audit',
+    path: '/trainers/:trainerId/audit',
+    title: 'Trainer Audit',
+    scaffolded: false,
+  },
   oemCertifications: {
     screenId: 'SCR-013',
     path: '/master-data/oem-certifications',
@@ -201,6 +215,10 @@ export const PLACEHOLDER_ROUTES: readonly ScreenRoute[] = Object.values(ROUTES).
 
 export function adminUserEditPath(userId: string): string {
   return ROUTES.adminUserEdit.path.replace(':userId', encodeURIComponent(userId));
+}
+
+export function trainerAuditPath(trainerId: string): string {
+  return ROUTES.trainerAudit.path.replace(':trainerId', encodeURIComponent(trainerId));
 }
 
 export function customerDetailPath(customerId: string): string {
