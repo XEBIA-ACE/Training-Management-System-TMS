@@ -1,13 +1,15 @@
 # Implementation Plan: US-003
 
 ## Technical Context
-- unresolved reference (artifact-SVC-005-api_spec)
-- unresolved reference (artifact-SVC-005-c3)
-- unresolved reference (artifact-SVC-005-c4)
-- unresolved reference (service:SVC-005)
-- unresolved reference (service:SVC-012)
-- unresolved reference (service:SVC-013)
-- unresolved reference (service:SVC-014)
+- unresolved reference (service:SVC-015)
+- unresolved reference (story:US-003)
+- unresolved reference (FR-US-003-001)
+- unresolved reference (FR-US-003-002)
+- unresolved reference (FR-US-003-003)
+- unresolved reference (FR-US-003-004)
+- unresolved reference (FR-US-003-005)
+- unresolved reference (FR-US-003-006)
+- unresolved reference (FR-US-003-007)
 
 ## Contract Changes
 - No material API, event, or data contract change is evidenced.
@@ -17,10 +19,16 @@
 - Verify the changed user flow against the stated accessibility criteria
 
 ## Verification Plan
-- **US-003-ac-1**: When the frontend submits POST /trainers with trainerType INTERNAL, the TrainerCreateRequest validation must enforce that employeeId is present, email is well formed, and all other required fields in the schema name, location are provided; on any missing or malformed field the API must return HTTP 400 with an ErrorResponse that includes field level ValidationError entries highlighting the invalid fields.
-- **US-003-ac-2**: When the frontend submits POST /trainers with trainerType EXTERNAL, the TrainerCreateRequest validation must enforce that email and location and name are present and well formed and that any optional fields such as msaNdaStatus follow their enum constraints; on validation failure the API must return HTTP 400 with appropriate ValidationError entries and must not create a trainer record.
-- **US-003-ac-3**: When POST /trainers is called with an employeeId already present on any existing trainer for INTERNAL trainers or an email already present on any existing trainer for either INTERNAL or EXTERNAL trainers, including trainers that are currently inactive, the Trainer and Certification Repository lookup must detect the duplicate and the controller must return HTTP 409 Conflict with an ErrorResponse whose errorCode clearly indicates a duplicate employeeId or email and no new trainer record is persisted.
-- **US-003-ac-4**: When POST /trainers is called with a valid location string that maps to a known location or time zone rule, the Trainer and Certification Application Service must derive a timeZone value based on that location and persist it to the trainer record so that TrainerResponse includes the populated timeZone field on success.
-- **US-003-ac-5**: When a trainer is successfully created via POST /trainers the Trainer and Certification Application Service must default the trainer status field to ACTIVE in persistence and ensure that the new trainer appears in subsequent GET /trainers queries that filter by status ACTIVE and can be returned as a TrainerResponse used by downstream allocation and search flows.
-- **US-003-ac-6**: On every successful invocation of POST /trainers that results in a new trainer profile, the Trainer and Certification Application Service must create an immutable AuditEntry via the Audit and Logging Component with module set to trainer, recordId set to the new trainerId, actor information from the authenticated user, timestamp of creation, and non sensitive field values such as name, email, employeeId, trainerType and location while excluding any document file contents.
-- **US-003-ac-7**: If POST /trainers is attempted without authentication or with insufficient TRAINER.MANAGE style permissions as enforced by the RBAC and Authorization Component, the API must reject the request with 401 or 403 and must not create or modify any trainer records, while still logging denied access through the security events and audit mechanisms as described in the shared ErrorResponse and AuditEntry models.
+- **US-003-ac-1**: When an HR admin or super admin calls POST /api/v1/trainers with a CreateTrainerRequest whose type is INTERNAL, the service must enforce required fields including employeeId and validate field formats according to the Trainer and CreateTrainerRequest schemas, rejecting invalid payloads with HTTP 400 and a structured ErrorResponse listing field level errors via FieldError entries.
+- **US-003-ac-2**: When an HR admin or super admin calls POST /api/v1/trainers with a CreateTrainerRequest whose type is EXTERNAL, the service must enforce required fields including email and locationId and validate field formats as defined in the Trainer and CreateTrainerRequest schemas, rejecting any missing or malformed required data with HTTP 400 and ErrorResponse.
+- **US-003-ac-3**: When processing POST /api/v1/trainers, the service must check for uniqueness of trainer identifiers such that if an INTERNAL trainer is being created and any existing Trainer record, regardless of its ACTIVE or INACTIVE status, already has the same employeeId, the request is rejected with HTTP 400 ErrorResponse indicating the conflicting employeeId field, and similarly if any existing Trainer has the same email as the requested profile, the request is rejected with HTTP 400 highlighting the email conflict.
+- **US-003-ac-4**: When processing POST /api/v1/trainers with a locationId that corresponds to a known timezone in the core database, the service must derive and persist the Trainer.timezone field based on that location so that subsequent scheduling and reporting endpoints that use Trainer.timezone behave consistently; if the trainer is updated via PUT /api/v1/trainers/{trainerId} with a new locationId, the timezone must be recalculated and stored accordingly.
+- **US-003-ac-5**: Upon successful creation of a trainer via POST /api/v1/trainers, the service must persist the Trainer aggregate with status set to ACTIVE by default and ensure that this trainer is returned in eligible states by GET /api/v1/trainers and considered by GET /api/v1/allocations/eligible-trainers, subject to their certifications and availability, without requiring an explicit status change call.
+- **US-003-ac-6**: For every successful trainer creation through POST /api/v1/trainers, the service must append an immutable audit event recording the actor, timestamp, trainerId, and non document trainer profile fields to the trainer specific audit trail exposed via GET /api/v1/trainers/{trainerId}/audit-logs, and must ensure that no sensitive document file contents from /api/v1/trainers/{trainerId}/documents are included in the audit payload.
+- **US-003-ac-7**: If validation or duplicate identifier checks fail during POST /api/v1/trainers, the service must still record an appropriate audit or unauthorized access log entry according to its global audit model so that attempted but blocked profile creations are visible via the relevant audit log endpoints.
+
+## Provenance
+- **Implementation specification source hash**: `sha256:dde6f06528d7e8f836848b6c011156f769c87dbf9d4084a0821f702b38223cec`
+- **Accepted impact revision**: _none; no accepted impact hash provided_
+- **Policy version**: `ace-spec-format/v1`
+- **Repository baseline commit**: `1e24775171e7dc2026e6fa760087c1df1ab0091f`
