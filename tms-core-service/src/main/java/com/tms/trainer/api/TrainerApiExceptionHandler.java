@@ -4,6 +4,8 @@ import com.tms.crosscutting.web.CorrelationIdFilter;
 import com.tms.crosscutting.web.ErrorResponse;
 import com.tms.crosscutting.web.ValidationErrorItem;
 import com.tms.trainer.domain.TrainerNotFoundException;
+import com.tms.trainer.domain.TrainerValidationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
@@ -22,6 +24,20 @@ class TrainerApiExceptionHandler {
   ResponseEntity<ErrorResponse> notFound(TrainerNotFoundException ex, HttpServletRequest request) {
     return respond(
         ErrorResponse.of(request, HttpStatus.NOT_FOUND, "TRAINER_NOT_FOUND", ex.getMessage()));
+  }
+
+  /** FR-US-003-001/002/003: 400 with one ValidationErrorItem (FieldError) per field. */
+  @ExceptionHandler(TrainerValidationException.class)
+  ResponseEntity<ErrorResponse> invalidTrainer(
+      TrainerValidationException ex, HttpServletRequest request) {
+    return respond(validationFailed(request, ex.details()));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  ResponseEntity<ErrorResponse> unreadable(HttpServletRequest request) {
+    return respond(
+        ErrorResponse.of(
+            request, HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Request body is not valid."));
   }
 
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)

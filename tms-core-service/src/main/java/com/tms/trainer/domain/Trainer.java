@@ -45,6 +45,12 @@ public class Trainer {
   @Column(name = "location_id")
   private UUID locationId;
 
+  @Column(length = 20)
+  private String type;
+
+  @Column(length = 64)
+  private String timezone;
+
   @Column(name = "weekend_available", nullable = false)
   private boolean weekendAvailable;
 
@@ -64,6 +70,56 @@ public class Trainer {
   @Version private long version;
 
   protected Trainer() {}
+
+  /** FR-US-003-005: new trainers are ACTIVE without any further status call. */
+  public static Trainer create(
+      TrainerType type,
+      String employeeId,
+      String name,
+      String email,
+      UUID locationId,
+      String timezone,
+      boolean weekendAvailable,
+      Instant now) {
+    Trainer t = new Trainer();
+    t.id = UUID.randomUUID();
+    t.type = type.name();
+    t.employeeId = employeeId;
+    t.name = name;
+    t.email = email;
+    t.status = "ACTIVE";
+    t.locationId = locationId;
+    t.timezone = timezone;
+    t.weekendAvailable = weekendAvailable;
+    t.createdAt = now;
+    t.updatedAt = now;
+    return t;
+  }
+
+  /**
+   * FR-US-003-004: a changed location recalculates the timezone. GAP: when the new location has no
+   * known timezone the previous timezone is kept (behavior undefined by the story).
+   */
+  public void update(String name, UUID newLocationId, String derivedTimezone, Instant now) {
+    if (name != null) {
+      this.name = name;
+    }
+    if (newLocationId != null && !newLocationId.equals(this.locationId)) {
+      this.locationId = newLocationId;
+      if (derivedTimezone != null) {
+        this.timezone = derivedTimezone;
+      }
+    }
+    this.updatedAt = now;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public String getTimezone() {
+    return timezone;
+  }
 
   public UUID getId() {
     return id;

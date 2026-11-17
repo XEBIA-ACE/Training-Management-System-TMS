@@ -1,5 +1,6 @@
 package com.tms.trainer.domain;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,6 +9,11 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface TrainerRepository
     extends JpaRepository<Trainer, UUID>, JpaSpecificationExecutor<Trainer> {
+
+  /** FR-US-003-003: any status (ACTIVE or INACTIVE) counts as a conflict. */
+  Optional<Trainer> findFirstByEmployeeId(String employeeId);
+
+  Optional<Trainer> findFirstByEmailIgnoreCase(String email);
 
   /**
    * TrainerRepository.Search (FR-US-002-001/002): trainers matching every supplied filter in {@code

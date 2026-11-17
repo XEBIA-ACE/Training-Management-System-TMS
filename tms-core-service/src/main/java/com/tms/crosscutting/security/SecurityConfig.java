@@ -71,6 +71,7 @@ public class SecurityConfig {
               auth.requestMatchers("/api/admin/**").hasRole(TmsRoles.SUPER_ADMIN);
               auth.requestMatchers("/api/v1/customers", "/api/v1/customers/**").authenticated();
               auth.requestMatchers("/api/trainers", "/api/trainers/**").authenticated();
+              auth.requestMatchers("/api/v1/trainers", "/api/v1/trainers/**").authenticated();
               auth.anyRequest().authenticated();
             })
         .oauth2ResourceServer(

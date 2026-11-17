@@ -1,7 +1,16 @@
 package com.tms.trainer.api;
 
 import com.tms.trainer.application.TrainerAppService;
+import com.tms.trainer.application.TrainerCommandService;
+import com.tms.trainer.application.TrainerCommandService.CreateCommand;
+import com.tms.trainer.application.TrainerCommandService.UpdateCommand;
 import com.tms.trainer.domain.TrainerSearchCriteria;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -17,19 +26,55 @@ import org.springframework.web.bind.annotation.RestController;
  * (SecurityConfig) and a trainer directory role (TrainerAppService, via AuthContextProvider).
  */
 @RestController
-@RequestMapping(TrainerController.BASE_PATH)
+@RequestMapping({TrainerController.BASE_PATH, TrainerController.V1_BASE_PATH})
 public class TrainerController {
 
   public static final String BASE_PATH = "/api/trainers";
+
+  /**
+   * US-003 paths are specified under {@code /api/v1/trainers}; the US-002 reads keep {@code
+   * /api/trainers} and are additionally served here (same handlers, no new contract).
+   */
+  public static final String V1_BASE_PATH = "/api/v1/trainers";
 
   static final int DEFAULT_PAGE_SIZE = 20;
   static final int MAX_PAGE_SIZE = 100;
   static final int MAX_SEARCH_LENGTH = 200;
 
   private final TrainerAppService service;
+  private final TrainerCommandService commands;
 
-  public TrainerController(TrainerAppService service) {
+  public TrainerController(TrainerAppService service, TrainerCommandService commands) {
     this.service = service;
+    this.commands = commands;
+  }
+
+  /** FR-US-003-001..007: 201 with the ACTIVE trainer; 400 with field errors; 403 without role. */
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public TrainerResponse create(@RequestBody CreateTrainerRequest body) {
+    return TrainerResponse.from(
+        commands.create(
+            new CreateCommand(
+                body.type(),
+                body.employeeId(),
+                body.name(),
+                body.email(),
+                body.locationId(),
+                body.weekendAvailable())));
+  }
+
+  /** FR-US-003-004: a changed locationId recalculates Trainer.timezone. */
+  @PutMapping("/{id}")
+  public TrainerResponse update(@PathVariable UUID id, @RequestBody UpdateTrainerRequest body) {
+    return TrainerResponse.from(
+        commands.update(id, new UpdateCommand(body.name(), body.locationId())));
+  }
+
+  /** FR-US-003-006/007: immutable audit trail for the trainer. */
+  @GetMapping("/{id}/audit-logs")
+  public List<TrainerAuditLogResponse> auditLogs(@PathVariable UUID id) {
+    return commands.auditLogs(id).stream().map(TrainerAuditLogResponse::from).toList();
   }
 
   /**
