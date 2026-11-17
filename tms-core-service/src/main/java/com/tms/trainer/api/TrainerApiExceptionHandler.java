@@ -3,14 +3,15 @@ package com.tms.trainer.api;
 import com.tms.crosscutting.web.CorrelationIdFilter;
 import com.tms.crosscutting.web.ErrorResponse;
 import com.tms.crosscutting.web.ValidationErrorItem;
+import com.tms.trainer.domain.TrainerConflictException;
 import com.tms.trainer.domain.TrainerNotFoundException;
 import com.tms.trainer.domain.TrainerValidationException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -26,7 +27,26 @@ class TrainerApiExceptionHandler {
         ErrorResponse.of(request, HttpStatus.NOT_FOUND, "TRAINER_NOT_FOUND", ex.getMessage()));
   }
 
-  /** FR-US-003-001/002/003: 400 with one ValidationErrorItem (FieldError) per field. */
+  /**
+   * FR-US-003-003: 409 whose code is DUPLICATE_EMPLOYEE_ID or DUPLICATE_EMAIL, with one detail per
+   * conflicting field.
+   */
+  @ExceptionHandler(TrainerConflictException.class)
+  ResponseEntity<ErrorResponse> conflict(TrainerConflictException ex, HttpServletRequest request) {
+    HttpStatus status = HttpStatus.CONFLICT;
+    return respond(
+        new ErrorResponse(
+            Instant.now(),
+            CorrelationIdFilter.currentTraceId(request),
+            request.getRequestURI(),
+            status.value(),
+            status.getReasonPhrase(),
+            ex.code(),
+            ex.getMessage(),
+            ex.details()));
+  }
+
+  /** FR-US-003-001/002: 400 with one ValidationErrorItem (FieldError) per field. */
   @ExceptionHandler(TrainerValidationException.class)
   ResponseEntity<ErrorResponse> invalidTrainer(
       TrainerValidationException ex, HttpServletRequest request) {

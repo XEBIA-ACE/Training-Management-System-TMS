@@ -4,7 +4,10 @@ package com.tms.crosscutting.audit;
 public enum AuditLogEntryType {
   /** A search/filter query over a directory (e.g. {@code GET /api/trainers}). */
   SEARCH,
-  /** An UnauthorizedAccessEntry: a caller was denied access (HTTP 403). */
+  /**
+   * An UnauthorizedAccessEntry: a caller was denied access (HTTP 403), or a request without valid
+   * authentication was rejected (HTTP 401, {@code details.reason=AUTHENTICATION_REQUIRED}).
+   */
   UNAUTHORIZED_ACCESS,
   /**
    * A create operation (US-003 {@code POST /api/v1/trainers}); {@code details.outcome} is {@code
