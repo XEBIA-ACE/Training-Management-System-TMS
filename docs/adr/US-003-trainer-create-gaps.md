@@ -5,7 +5,7 @@ Status: open — needs product / security confirmation. Marked `GAP(...)` in cod
 | Ref | Gap | Provisional choice | Where |
 | --- | --- | --- | --- |
 | Contract | Spec paths are `/api/v1/trainers`; US-002 reads are `/api/trainers` | Controller serves both prefixes; POST/PUT/audit-logs are new under `/api/v1/trainers` | `TrainerController` |
-| FR-US-003-001/002 | Required fields and formats of `CreateTrainerRequest` are not in the repo | `type`, `name`, `email` always; `employeeId` for INTERNAL; `locationId` (UUID) for EXTERNAL; email shape check; lengths per column | `TrainerCommandService` |
+| FR-US-003-001/002 | Required fields and formats of `CreateTrainerRequest` are not in the repo | `type`, `name`, `email`, `locationId` (UUID) always (spec bundle 0363282d, US-003-ac-1); `employeeId` for INTERNAL; email shape check; lengths per column | `TrainerCommandService` |
 | FR-US-003-001 | RBAC role names | Configurable `tms.trainer.directory.create-roles` (default `HR_ADMIN,SUPER_ADMIN`); denials write an UNAUTHORIZED_ACCESS entry | `TrainerDirectoryProperties` |
 | FR-US-003-004 | No CustomerLocation / location master data exists | Minimal `location(id, timezone)` lookup (`V7`); unknown location or no timezone leaves `timezone` NULL (create) / unchanged (PUT) | `V7__trainer_create_profile.sql`, `Location` |
 | FR-US-003-004 | PUT body is undefined | `{name?, locationId?}`; absent fields unchanged | `UpdateTrainerRequest` |
