@@ -12,11 +12,14 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * change. The defaults fail closed (only {@code SUPER_ADMIN}) and audit every request.
  *
  * @param roles roles (without {@code ROLE_}) allowed to search trainers and view trainer profiles
+ * @param createRoles roles allowed to create/update trainers (US-003: HR admin or super admin)
  * @param audit which trainer directory operations write audit entries
  */
 @ConfigurationProperties("tms.trainer.directory")
 public record TrainerDirectoryProperties(
-    @DefaultValue("SUPER_ADMIN") List<String> roles, @DefaultValue Audit audit) {
+    @DefaultValue("SUPER_ADMIN") List<String> roles,
+    @DefaultValue Audit audit,
+    @DefaultValue({"HR_ADMIN", "SUPER_ADMIN"}) List<String> createRoles) {
 
   /**
    * @param searchEnabled write an audit entry for every {@code GET /api/trainers} request

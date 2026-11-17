@@ -21,7 +21,9 @@ public record TrainerResponse(
     String availabilityState,
     UUID locationId,
     boolean weekendAvailable,
-    List<UUID> certificationIds) {
+    List<UUID> certificationIds,
+    String type,
+    String timezone) {
 
   static TrainerResponse from(TrainerProfile p) {
     return new TrainerResponse(
@@ -33,6 +35,8 @@ public record TrainerResponse(
         p.availabilityState(),
         p.locationId(),
         p.weekendAvailable(),
-        p.certificationIds());
+        p.certificationIds(),
+        p.type(),
+        p.timezone());
   }
 }

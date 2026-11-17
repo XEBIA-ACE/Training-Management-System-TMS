@@ -66,6 +66,8 @@ tms:
     directory:
       # US-002: roles allowed to search trainers / view trainer profiles (fail-closed default).
       roles: ${TMS_TRAINER_DIRECTORY_ROLES:SUPER_ADMIN}
+      # US-003: roles allowed to create/update trainers.
+      create-roles: ${TMS_TRAINER_CREATE_ROLES:HR_ADMIN,SUPER_ADMIN}
       audit:
         search-enabled: ${TMS_TRAINER_AUDIT_SEARCH_ENABLED:true}
         unauthorized-access-enabled: ${TMS_TRAINER_AUDIT_UNAUTHORIZED_ENABLED:true}

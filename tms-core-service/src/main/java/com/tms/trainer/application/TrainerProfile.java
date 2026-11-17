@@ -18,7 +18,9 @@ public record TrainerProfile(
     String availabilityState,
     UUID locationId,
     boolean weekendAvailable,
-    List<UUID> certificationIds) {
+    List<UUID> certificationIds,
+    String type,
+    String timezone) {
 
   static TrainerProfile from(Trainer trainer) {
     return new TrainerProfile(
@@ -30,6 +32,8 @@ public record TrainerProfile(
         trainer.getAvailabilityState(),
         trainer.getLocationId(),
         trainer.isWeekendAvailable(),
-        trainer.getCertificationIds().stream().sorted().toList());
+        trainer.getCertificationIds().stream().sorted().toList(),
+        trainer.getType(),
+        trainer.getTimezone());
   }
 }

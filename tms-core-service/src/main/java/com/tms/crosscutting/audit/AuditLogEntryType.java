@@ -5,5 +5,12 @@ public enum AuditLogEntryType {
   /** A search/filter query over a directory (e.g. {@code GET /api/trainers}). */
   SEARCH,
   /** An UnauthorizedAccessEntry: a caller was denied access (HTTP 403). */
-  UNAUTHORIZED_ACCESS
+  UNAUTHORIZED_ACCESS,
+  /**
+   * A create operation (US-003 {@code POST /api/v1/trainers}); {@code details.outcome} is {@code
+   * SUCCESS} or {@code REJECTED}.
+   */
+  CREATE,
+  /** An update operation (US-003 {@code PUT /api/v1/trainers/{trainerId}}). */
+  UPDATE
 }
