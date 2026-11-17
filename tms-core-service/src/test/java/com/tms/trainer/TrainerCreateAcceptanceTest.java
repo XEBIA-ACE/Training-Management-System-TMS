@@ -36,7 +36,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /**
  * US-003 acceptance tests for trainer creation ({@code POST /api/v1/trainers}), update ({@code PUT
  * /api/v1/trainers/{id}}) and the trainer audit trail. Test obligations:
- * 34a5ad90-698f-4343-9f53-b2abfb05b6c6:test:acceptance:US-003-ac-1..ac-7.
+ * 0363282d-7150-41e1-9994-7cfcdf2fd621:test:acceptance:US-003-ac-1..ac-6; verify tasks T007..T012.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -71,26 +71,53 @@ class TrainerCreateAcceptanceTest {
   // --- US-003-ac-1 -------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("[US-003-ac-1][FR-US-003-001][T008] INTERNAL without employeeId is a 400 with details")
+  @DisplayName("[US-003-ac-1][FR-US-003-001][T007] INTERNAL without employeeId is a 400 with details")
   void us003Ac1_internalRequiresEmployeeId() throws Exception {
-    JsonNode body =
-        createExpect400(hr(), Map.of("type", "INTERNAL", "name", "Asha", "email", "asha@corp.com"));
-    assertThat(fields(body)).contains("employeeId");
-    assertThat(body.get("code").asText()).isEqualTo("VALIDATION_FAILED");
+    Map<String, Object> req = validInternal("E1", "asha@corp.com");
+    req.remove("employeeId");
+    assertThat(fields(createExpect400(hr(), req))).containsExactly("employeeId");
   }
 
   @Test
-  @DisplayName("[US-003-ac-1][FR-US-003-001][T008] every invalid field is listed; nothing persisted")
+  @DisplayName("[US-003-ac-1][FR-US-003-001][T007] EXTERNAL does not need employeeId")
+  void us003Ac1_externalDoesNotRequireEmployeeId() throws Exception {
+    mockMvc
+        .perform(json(post(TRAINERS), validExternal("ext@vendor.com", PUNE), hr()))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.type").value("EXTERNAL"));
+  }
+
+  @Test
+  @DisplayName("[US-003-ac-1][FR-US-003-001][T007] email, name, location and type are always required")
+  void us003Ac1_alwaysRequiredFields() throws Exception {
+    JsonNode body = createExpect400(hr(), Map.of());
+    assertThat(fields(body)).contains("type", "name", "email", "locationId");
+    // location is required for INTERNAL as well as EXTERNAL
+    Map<String, Object> internal = validInternal("E1", "a@corp.com");
+    internal.remove("locationId");
+    assertThat(fields(createExpect400(hr(), internal))).containsExactly("locationId");
+    Map<String, Object> external = validExternal("e@vendor.com", PUNE);
+    external.remove("locationId");
+    assertThat(fields(createExpect400(hr(), external))).containsExactly("locationId");
+  }
+
+  @Test
+  @DisplayName("[US-003-ac-1][FR-US-003-001][T007] malformed values are listed per field; nothing persisted")
   void us003Ac1_formatErrorsListedPerField() throws Exception {
     JsonNode body =
         createExpect400(
-            hr(), Map.of("type", "INTERNAL", "employeeId", "E1", "name", " ", "email", "nope"));
-    assertThat(fields(body)).contains("name", "email");
+            hr(),
+            Map.of(
+                "type", "OTHER",
+                "name", " ",
+                "email", "nope",
+                "locationId", "not-a-uuid"));
+    assertThat(fields(body)).contains("type", "name", "email", "locationId");
     assertThat(count("select count(*) from tms.trainer")).isZero();
   }
 
   @Test
-  @DisplayName("[US-003-ac-1][FR-US-003-001][T008] only HR admin / super admin may create (403)")
+  @DisplayName("[US-003-ac-1][FR-US-003-001][T007] only HR admin / super admin may create (403)")
   void us003Ac1_rbac() throws Exception {
     mockMvc
         .perform(json(post(TRAINERS), validInternal("E1", "a@corp.com"), token("u", "ROLE_VIEWER")))
@@ -109,46 +136,8 @@ class TrainerCreateAcceptanceTest {
   // --- US-003-ac-2 -------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("[US-003-ac-2][FR-US-003-002][T009] EXTERNAL requires email and locationId")
-  void us003Ac2_externalRequiresEmailAndLocation() throws Exception {
-    JsonNode body = createExpect400(hr(), Map.of("type", "EXTERNAL", "name", "Ext"));
-    assertThat(fields(body)).contains("email", "locationId");
-  }
-
-  @Test
-  @DisplayName("[US-003-ac-2][FR-US-003-002][T009] malformed email / locationId / type are 400")
-  void us003Ac2_malformedValues() throws Exception {
-    JsonNode body =
-        createExpect400(
-            hr(),
-            Map.of("type", "EXTERNAL", "name", "Ext", "email", "bad", "locationId", "not-a-uuid"));
-    assertThat(fields(body)).contains("email", "locationId");
-    assertThat(fields(createExpect400(hr(), Map.of("type", "OTHER", "name", "x", "email", "a@b.co"))))
-        .contains("type");
-  }
-
-  @Test
-  @DisplayName("[US-003-ac-2][FR-US-003-002][T009] valid EXTERNAL profile is created (201)")
-  void us003Ac2_validExternalCreated() throws Exception {
-    mockMvc
-        .perform(
-            json(
-                post(TRAINERS),
-                Map.of(
-                    "type", "EXTERNAL",
-                    "name", "Ext",
-                    "email", "ext@vendor.com",
-                    "locationId", PUNE.toString()),
-                hr()))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.type").value("EXTERNAL"));
-  }
-
-  // --- US-003-ac-3 -------------------------------------------------------------------------------
-
-  @Test
-  @DisplayName("[US-003-ac-3][FR-US-003-003][T010] duplicate employeeId is rejected for any status")
-  void us003Ac3_duplicateEmployeeId() throws Exception {
+  @DisplayName("[US-003-ac-2][FR-US-003-002][T008] duplicate employeeId is rejected for any status")
+  void us003Ac2_duplicateEmployeeId() throws Exception {
     UUID id = createOk(validInternal("E1", "first@corp.com"));
     jdbc.update("update tms.trainer set status='INACTIVE' where id=?", id);
     JsonNode body = createExpect400(hr(), validInternal("E1", "second@corp.com"));
@@ -157,33 +146,53 @@ class TrainerCreateAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-003-ac-3][FR-US-003-003][T010] duplicate email is rejected for any type")
-  void us003Ac3_duplicateEmail() throws Exception {
+  @DisplayName("[US-003-ac-2][FR-US-003-002][T008] duplicate email is rejected for any type/status")
+  void us003Ac2_duplicateEmail() throws Exception {
+    UUID id = createOk(validInternal("E1", "same@corp.com"));
+    assertThat(fields(createExpect400(hr(), validInternal("E2", "SAME@corp.com"))))
+        .containsExactly("email");
+    jdbc.update("update tms.trainer set status='INACTIVE' where id=?", id);
+    assertThat(fields(createExpect400(hr(), validExternal("same@corp.com", PUNE))))
+        .containsExactly("email");
+  }
+
+  @Test
+  @DisplayName("[US-003-ac-2][FR-US-003-002][T008] both conflicting fields are reported together")
+  void us003Ac2_bothFieldsReported() throws Exception {
     createOk(validInternal("E1", "same@corp.com"));
-    JsonNode body = createExpect400(hr(), validInternal("E2", "SAME@corp.com"));
-    assertThat(fields(body)).containsExactly("email");
-    Map<String, Object> external = validExternal("same@corp.com", PUNE);
-    assertThat(fields(createExpect400(hr(), external))).containsExactly("email");
+    assertThat(fields(createExpect400(hr(), validInternal("E1", "same@corp.com"))))
+        .containsExactlyInAnyOrder("employeeId", "email");
+  }
+
+  // --- US-003-ac-3 -------------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("[US-003-ac-3][FR-US-003-003][T009] new trainer is ACTIVE and listed with status=ACTIVE")
+  void us003Ac3_activeByDefaultAndListed() throws Exception {
+    UUID id = createOk(validInternal("E1", "a@corp.com"));
+    assertThat(jdbc.queryForObject("select status from tms.trainer where id=?", String.class, id))
+        .isEqualTo("ACTIVE");
+    mockMvc
+        .perform(authorizedGet(TRAINERS).param("status", "ACTIVE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value(id.toString()))
+        .andExpect(jsonPath("$.items[0].status").value("ACTIVE"));
   }
 
   // --- US-003-ac-4 -------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("[US-003-ac-4][FR-US-003-004][T011] create derives and persists timezone")
+  @DisplayName("[US-003-ac-4][FR-US-003-004][T010] create derives and persists timezone")
   void us003Ac4_createDerivesTimezone() throws Exception {
-    Map<String, Object> req = validInternal("E1", "a@corp.com");
-    req.put("locationId", PUNE.toString());
-    UUID id = createOk(req);
+    UUID id = createOk(validInternal("E1", "a@corp.com"));
     assertThat(jdbc.queryForObject("select timezone from tms.trainer where id=?", String.class, id))
         .isEqualTo("Asia/Kolkata");
   }
 
   @Test
-  @DisplayName("[US-003-ac-4][FR-US-003-004][T011] PUT with a new locationId recalculates timezone")
+  @DisplayName("[US-003-ac-4][FR-US-003-004][T010] PUT with a new locationId recalculates timezone")
   void us003Ac4_updateRecalculatesTimezone() throws Exception {
-    Map<String, Object> req = validInternal("E1", "a@corp.com");
-    req.put("locationId", PUNE.toString());
-    UUID id = createOk(req);
+    UUID id = createOk(validInternal("E1", "a@corp.com"));
     mockMvc
         .perform(json(put(TRAINERS + "/" + id), Map.of("locationId", LONDON.toString()), hr()))
         .andExpect(status().isOk())
@@ -193,7 +202,7 @@ class TrainerCreateAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-003-ac-4][FR-US-003-004][T011] unknown location leaves timezone unset (GAP)")
+  @DisplayName("[US-003-ac-4][FR-US-003-004][T010] unknown location leaves timezone unset (GAP)")
   void us003Ac4_unknownLocationHasNoTimezone() throws Exception {
     Map<String, Object> req = validInternal("E1", "a@corp.com");
     req.put("locationId", NOWHERE.toString());
@@ -205,25 +214,8 @@ class TrainerCreateAcceptanceTest {
   // --- US-003-ac-5 -------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("[US-003-ac-5][FR-US-003-005][T012] new trainer is ACTIVE and listed as eligible")
-  void us003Ac5_activeByDefaultAndListed() throws Exception {
-    UUID id = createOk(validInternal("E1", "a@corp.com"));
-    assertThat(jdbc.queryForObject("select status from tms.trainer where id=?", String.class, id))
-        .isEqualTo("ACTIVE");
-    // GAP(FR-US-003-005): GET /api/allocations/eligible-trainers does not exist in this
-    // repository; eligibility is asserted through the existing status=ACTIVE trainer listing.
-    mockMvc
-        .perform(authorizedGet(TRAINERS).param("status", "ACTIVE"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.items[0].id").value(id.toString()))
-        .andExpect(jsonPath("$.items[0].status").value("ACTIVE"));
-  }
-
-  // --- US-003-ac-6 -------------------------------------------------------------------------------
-
-  @Test
-  @DisplayName("[US-003-ac-6][FR-US-003-006][T013] creation appends an audit event with profile data")
-  void us003Ac6_successAudited() throws Exception {
+  @DisplayName("[US-003-ac-5][FR-US-003-005][T011] creation appends an audit event with profile data")
+  void us003Ac5_successAudited() throws Exception {
     UUID id = createOk(validInternal("E1", "a@corp.com"));
     JsonNode logs = auditLogs(id);
     assertThat(logs).hasSize(1);
@@ -233,13 +225,16 @@ class TrainerCreateAcceptanceTest {
     assertThat(e.get("resourceId").asText()).isEqualTo(id.toString());
     assertThat(e.get("details").get("outcome").asText()).isEqualTo("SUCCESS");
     assertThat(e.get("details").get("trainerId").asText()).isEqualTo(id.toString());
-    assertThat(e.get("details").get("email").asText()).isEqualTo("a@corp.com");
+    assertThat(e.get("details").get("type").asText()).isEqualTo("INTERNAL");
     assertThat(e.get("details").get("employeeId").asText()).isEqualTo("E1");
+    assertThat(e.get("details").get("email").asText()).isEqualTo("a@corp.com");
+    assertThat(e.get("details").get("locationId").asText()).isEqualTo(PUNE.toString());
+    assertThat(e.get("details").get("status").asText()).isEqualTo("ACTIVE");
   }
 
   @Test
-  @DisplayName("[US-003-ac-6][FR-US-003-006][T013] audit payload carries no document content")
-  void us003Ac6_noDocumentContentInAudit() throws Exception {
+  @DisplayName("[US-003-ac-5][FR-US-003-005][T011] audit payload carries no document content")
+  void us003Ac5_noDocumentContentInAudit() throws Exception {
     Map<String, Object> req = validInternal("E1", "a@corp.com");
     req.put("documents", "SECRET-DOCUMENT-BYTES");
     UUID id = createOk(req);
@@ -251,8 +246,8 @@ class TrainerCreateAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-003-ac-6][FR-US-003-006][T013] audit entries are immutable (entity is @Immutable)")
-  void us003Ac6_entriesAreImmutable() throws Exception {
+  @DisplayName("[US-003-ac-5][FR-US-003-005][T011] audit entries are immutable (entity is @Immutable)")
+  void us003Ac5_entriesAreImmutable() throws Exception {
     UUID id = createOk(validInternal("E1", "a@corp.com"));
     String before = auditLogs(id).toString();
     mockMvc
@@ -263,12 +258,37 @@ class TrainerCreateAcceptanceTest {
     assertThat(after.get(0).toString()).isEqualTo(objectMapper.readTree(before).get(0).toString());
   }
 
-  // --- US-003-ac-7 -------------------------------------------------------------------------------
+  // --- US-003-ac-6 -------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("[US-003-ac-7][FR-US-003-007][T014] validation failure is audited in the audit log")
-  void us003Ac7_validationFailureAudited() throws Exception {
-    createExpect400(hr(), Map.of("type", "INTERNAL", "name", "Asha", "email", "asha@corp.com"));
+  @DisplayName("[US-003-ac-6][FR-US-003-006][T012] validation failure uses ErrorResponse with per-field details")
+  void us003Ac6_validationErrorResponseShape() throws Exception {
+    Map<String, Object> req = validInternal("E1", "bad");
+    req.remove("name");
+    JsonNode body = createExpect400(hr(), req);
+    // GAP(FR-US-003-006): the shared code is VALIDATION_FAILED; the spec says "such as
+    // VALIDATION_ERROR". Kept aligned with the existing Core Service ErrorResponse convention.
+    assertThat(body.get("code").asText()).isEqualTo("VALIDATION_FAILED");
+    assertThat(body.get("status").asInt()).isEqualTo(400);
+    assertThat(fields(body)).containsExactlyInAnyOrder("name", "email");
+    body.get("details").forEach(d -> assertThat(d.get("message").asText()).isNotBlank());
+  }
+
+  @Test
+  @DisplayName("[US-003-ac-6][FR-US-003-006][T012] duplicate failure uses ErrorResponse naming the field")
+  void us003Ac6_duplicateErrorResponseShape() throws Exception {
+    createOk(validInternal("E1", "a@corp.com"));
+    JsonNode body = createExpect400(hr(), validInternal("E1", "a@corp.com"));
+    assertThat(body.get("code").asText()).isEqualTo("VALIDATION_FAILED");
+    assertThat(fields(body)).containsExactlyInAnyOrder("employeeId", "email");
+  }
+
+  @Test
+  @DisplayName("[US-003-ac-6][FR-US-003-006][T012] validation failure is audited without submitted values")
+  void us003Ac6_validationFailureAudited() throws Exception {
+    Map<String, Object> req = validInternal("E1", "asha@corp.com");
+    req.remove("employeeId");
+    createExpect400(hr(), req);
     List<Map<String, Object>> rows =
         jdbc.queryForList(
             "select actor, details::text as details from tms.audit_log_entry"
@@ -282,8 +302,8 @@ class TrainerCreateAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-003-ac-7][FR-US-003-007][T014] duplicate rejection is visible via audit-logs")
-  void us003Ac7_duplicateRejectionVisibleViaEndpoint() throws Exception {
+  @DisplayName("[US-003-ac-6][FR-US-003-006][T012] duplicate rejection is visible via audit-logs")
+  void us003Ac6_duplicateRejectionVisibleViaEndpoint() throws Exception {
     UUID existing = createOk(validInternal("E1", "a@corp.com"));
     createExpect400(hr(), validInternal("E1", "other@corp.com"));
     JsonNode logs = auditLogs(existing);
@@ -340,6 +360,7 @@ class TrainerCreateAcceptanceTest {
     m.put("employeeId", employeeId);
     m.put("name", "Asha Rao");
     m.put("email", email);
+    m.put("locationId", PUNE.toString());
     return m;
   }
 

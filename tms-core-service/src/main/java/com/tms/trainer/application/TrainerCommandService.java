@@ -37,8 +37,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * documents are never touched by this service.
  *
  * <p>GAP(FR-US-003-001/002): the exact required/format rules of CreateTrainerRequest are not in the
- * repository. Provisional: {@code type}, {@code name}, {@code email} always; {@code employeeId} for
- * INTERNAL; {@code locationId} for EXTERNAL; email must look like an address; max lengths follow
+ * repository. Provisional: {@code type}, {@code name}, {@code email}, {@code locationId} always;
+ * {@code employeeId} for INTERNAL; email must look like an address; max lengths follow
  * the {@code trainer} table columns; {@code locationId} must be a UUID.
  */
 @Service
@@ -211,8 +211,9 @@ public class TrainerCommandService {
     if (!isBlank(cmd.employeeId()) && cmd.employeeId().trim().length() > 60) {
       errors.add(new ValidationErrorItem("employeeId", "employeeId must be at most 60 characters."));
     }
-    if (type == TrainerType.EXTERNAL && isBlank(cmd.locationId())) {
-      errors.add(new ValidationErrorItem("locationId", "locationId is required for EXTERNAL."));
+    // FR-US-003-001 (US-003-ac-1): location is always required, regardless of type.
+    if (isBlank(cmd.locationId())) {
+      errors.add(new ValidationErrorItem("locationId", "locationId is required."));
     }
     return type;
   }
