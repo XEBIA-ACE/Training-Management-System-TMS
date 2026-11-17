@@ -51,6 +51,9 @@ public class Trainer {
   @Column(length = 64)
   private String timezone;
 
+  @Column(name = "msa_nda_status", length = 20)
+  private String msaNdaStatus;
+
   @Column(name = "weekend_available", nullable = false)
   private boolean weekendAvailable;
 
@@ -80,6 +83,7 @@ public class Trainer {
       UUID locationId,
       String timezone,
       boolean weekendAvailable,
+      MsaNdaStatus msaNdaStatus,
       Instant now) {
     Trainer t = new Trainer();
     t.id = UUID.randomUUID();
@@ -91,6 +95,7 @@ public class Trainer {
     t.locationId = locationId;
     t.timezone = timezone;
     t.weekendAvailable = weekendAvailable;
+    t.msaNdaStatus = msaNdaStatus != null ? msaNdaStatus.name() : null;
     t.createdAt = now;
     t.updatedAt = now;
     return t;
@@ -119,6 +124,10 @@ public class Trainer {
 
   public String getTimezone() {
     return timezone;
+  }
+
+  public String getMsaNdaStatus() {
+    return msaNdaStatus;
   }
 
   public UUID getId() {

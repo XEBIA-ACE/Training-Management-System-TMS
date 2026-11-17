@@ -9,13 +9,16 @@ import com.tms.crosscutting.web.CorrelationIdFilter;
 import com.tms.crosscutting.web.ValidationErrorItem;
 import com.tms.trainer.domain.Location;
 import com.tms.trainer.domain.LocationRepository;
+import com.tms.trainer.domain.MsaNdaStatus;
 import com.tms.trainer.domain.Trainer;
+import com.tms.trainer.domain.TrainerConflictException;
 import com.tms.trainer.domain.TrainerNotFoundException;
 import com.tms.trainer.domain.TrainerRepository;
 import com.tms.trainer.domain.TrainerType;
 import com.tms.trainer.domain.TrainerValidationException;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,10 +39,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>Only non-document profile fields are ever written to audit entries (FR-US-003-006); trainer
  * documents are never touched by this service.
  *
- * <p>GAP(FR-US-003-001/002): the exact required/format rules of CreateTrainerRequest are not in the
- * repository. Provisional: {@code type}, {@code name}, {@code email} always; {@code employeeId} for
- * INTERNAL; {@code locationId} for EXTERNAL; email must look like an address; max lengths follow
- * the {@code trainer} table columns; {@code locationId} must be a UUID.
+ * <p>FR-US-003-001/002: {@code type}, {@code name}, {@code email} and {@code locationId} are always
+ * required, {@code employeeId} additionally for INTERNAL; {@code msaNdaStatus} is optional and must
+ * be a {@link MsaNdaStatus} value. GAP(artifact-SVC-005-api_spec): the exact format rules are not
+ * in the repository; email must look like an address, max lengths follow the {@code trainer} table
+ * columns and {@code locationId} must be a UUID.
  */
 @Service
 public class TrainerCommandService {
@@ -47,6 +51,7 @@ public class TrainerCommandService {
   static final String CREATE_ACTION = "POST /api/v1/trainers";
   static final String UPDATE_ACTION = "PUT /api/v1/trainers/{trainerId}";
   static final String RESOURCE_TYPE = "Trainer";
+  static final String AUDIT_MODULE = "trainer";
   static final String AUDIT_ACTION = "GET /api/v1/trainers/{trainerId}/audit-logs";
 
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
@@ -84,7 +89,8 @@ public class TrainerCommandService {
       String name,
       String email,
       String locationId,
-      Boolean weekendAvailable) {}
+      Boolean weekendAvailable,
+      String msaNdaStatus) {}
 
   /** Raw update input; absent fields are left unchanged. */
   public record UpdateCommand(String name, String locationId) {}
@@ -96,8 +102,10 @@ public class TrainerCommandService {
     List<ValidationErrorItem> errors = new ArrayList<>();
     TrainerType type = validateCreate(cmd, errors);
     UUID locationId = parseLocation(cmd.locationId(), errors);
+    MsaNdaStatus msaNdaStatus = parseMsaNdaStatus(cmd.msaNdaStatus(), errors);
     if (!errors.isEmpty()) {
-      rejectCreate(actor, cmd, errors, null);
+      auditRejectedCreate(actor, cmd, errors, null);
+      throw new TrainerValidationException(errors);
     }
 
     String employeeId = trimToNull(cmd.employeeId());
@@ -107,7 +115,8 @@ public class TrainerCommandService {
         type == TrainerType.INTERNAL
             ? readOnlyTx.execute(s -> repository.findFirstByEmployeeId(employeeId))
             : Optional.empty();
-    Optional<Trainer> byEmail = readOnlyTx.execute(s -> repository.findFirstByEmailIgnoreCase(email));
+    Optional<Trainer> byEmail =
+        readOnlyTx.execute(s -> repository.findFirstByEmailIgnoreCase(email));
     if (byEmployee.isPresent()) {
       errors.add(new ValidationErrorItem("employeeId", "employeeId is already in use."));
     }
@@ -117,7 +126,13 @@ public class TrainerCommandService {
     if (!errors.isEmpty()) {
       // Attach the rejection to the conflicting trainer's audit trail so it is retrievable there.
       UUID conflicting = byEmployee.or(() -> byEmail).map(Trainer::getId).orElse(null);
-      rejectCreate(actor, cmd, errors, conflicting);
+      auditRejectedCreate(actor, cmd, errors, conflicting);
+      // FR-US-003-003: 409. GAP: when both collide, employeeId (checked first) names the code.
+      throw new TrainerConflictException(
+          byEmployee.isPresent()
+              ? TrainerConflictException.DUPLICATE_EMPLOYEE_ID
+              : TrainerConflictException.DUPLICATE_EMAIL,
+          errors);
     }
 
     String timezone = timezoneOf(locationId);
@@ -133,6 +148,7 @@ public class TrainerCommandService {
                         locationId,
                         timezone,
                         Boolean.TRUE.equals(cmd.weekendAvailable()),
+                        msaNdaStatus,
                         clock.instant())));
 
     Map<String, Object> details = profileFields(saved);
@@ -154,19 +170,26 @@ public class TrainerCommandService {
       throw new TrainerValidationException(errors);
     }
     String timezone = locationId != null ? timezoneOf(locationId) : null;
-    Trainer saved =
+    // The profile is built inside the transaction: certificationIds is lazily loaded.
+    Map<String, Object> details = new LinkedHashMap<>();
+    TrainerProfile updated =
         tx.execute(
             s -> {
-              Trainer t = repository.findById(id).orElseThrow(() -> new TrainerNotFoundException(id));
+              Trainer t =
+                  repository.findById(id).orElseThrow(() -> new TrainerNotFoundException(id));
               t.update(
-                  cmd.name() != null ? cmd.name().trim() : null, locationId, timezone, clock.instant());
-              return repository.save(t);
+                  cmd.name() != null ? cmd.name().trim() : null,
+                  locationId,
+                  timezone,
+                  clock.instant());
+              Trainer saved = repository.save(t);
+              details.putAll(profileFields(saved));
+              return TrainerProfile.from(saved);
             });
-    Map<String, Object> details = profileFields(saved);
     details.put("outcome", "SUCCESS");
     auditLogClient.appendAuditEntry(
         entry(AuditLogEntryType.UPDATE, actor.actorId(), UPDATE_ACTION, id, details));
-    return TrainerProfile.from(saved);
+    return updated;
   }
 
   /** FR-US-003-006/007: the immutable audit trail of one trainer, oldest first. */
@@ -179,7 +202,7 @@ public class TrainerCommandService {
     if (!Boolean.TRUE.equals(readOnlyTx.execute(s -> repository.existsById(id)))) {
       throw new TrainerNotFoundException(id);
     }
-    return auditLogClient.findByResource(RESOURCE_TYPE,id.toString());
+    return auditLogClient.findByResource(RESOURCE_TYPE, id.toString());
   }
 
   // --- validation -------------------------------------------------------------------------------
@@ -209,10 +232,11 @@ public class TrainerCommandService {
       errors.add(new ValidationErrorItem("employeeId", "employeeId is required for INTERNAL."));
     }
     if (!isBlank(cmd.employeeId()) && cmd.employeeId().trim().length() > 60) {
-      errors.add(new ValidationErrorItem("employeeId", "employeeId must be at most 60 characters."));
+      errors.add(
+          new ValidationErrorItem("employeeId", "employeeId must be at most 60 characters."));
     }
-    if (type == TrainerType.EXTERNAL && isBlank(cmd.locationId())) {
-      errors.add(new ValidationErrorItem("locationId", "locationId is required for EXTERNAL."));
+    if (isBlank(cmd.locationId())) {
+      errors.add(new ValidationErrorItem("locationId", "locationId is required."));
     }
     return type;
   }
@@ -229,12 +253,34 @@ public class TrainerCommandService {
     }
   }
 
+  /**
+   * FR-US-003-002: optional; when supplied it must be a {@link MsaNdaStatus} value.
+   *
+   * <p>GAP(FR-US-003-002): the story only names msaNdaStatus for EXTERNAL trainers and does not say
+   * whether INTERNAL trainers may carry it; the enum constraint is applied for both types.
+   */
+  private static MsaNdaStatus parseMsaNdaStatus(String raw, List<ValidationErrorItem> errors) {
+    if (raw == null) {
+      return null;
+    }
+    try {
+      return MsaNdaStatus.valueOf(raw.trim());
+    } catch (IllegalArgumentException ex) {
+      errors.add(
+          new ValidationErrorItem(
+              "msaNdaStatus",
+              "msaNdaStatus must be one of " + Arrays.toString(MsaNdaStatus.values()) + "."));
+      return null;
+    }
+  }
+
   /** GAP(FR-US-003-004): unknown location / no timezone yields null; the story defines nothing. */
   private String timezoneOf(UUID locationId) {
     if (locationId == null) {
       return null;
     }
-    return readOnlyTx.execute(s -> locations.findById(locationId).map(Location::getTimezone).orElse(null));
+    return readOnlyTx.execute(
+        s -> locations.findById(locationId).map(Location::getTimezone).orElse(null));
   }
 
   // --- auth / audit -----------------------------------------------------------------------------
@@ -256,19 +302,19 @@ public class TrainerCommandService {
               actor.actorId(),
               action,
               trainerId,
-              Map.of("reason", "MISSING_TRAINER_ROLE")));
+              Map.of("module", AUDIT_MODULE, "reason", "MISSING_TRAINER_ROLE")));
     }
     throw new AccessDeniedException("Trainer access denied");
   }
 
   /**
-   * FR-US-003-007: records the blocked attempt in the global audit model, then fails with 400. Only
-   * field names, type and the (non-document) rejection reasons are stored, never the submitted
-   * values.
+   * Records a blocked create (400/409) in the global audit model. Only field names, type and the
+   * (non-document) rejection reasons are stored, never the submitted values.
    */
-  private void rejectCreate(
+  private void auditRejectedCreate(
       AuthContext actor, CreateCommand cmd, List<ValidationErrorItem> errors, UUID resourceId) {
     Map<String, Object> details = new LinkedHashMap<>();
+    details.put("module", AUDIT_MODULE);
     details.put("outcome", "REJECTED");
     if (cmd.type() != null && cmd.type().length() <= 20) {
       details.put("type", cmd.type());
@@ -277,11 +323,15 @@ public class TrainerCommandService {
     details.put("errors", errors.stream().map(e -> e.field() + ": " + e.message()).toList());
     auditLogClient.appendAuditEntry(
         entry(AuditLogEntryType.CREATE, actor.actorId(), CREATE_ACTION, resourceId, details));
-    throw new TrainerValidationException(errors);
   }
 
+  /**
+   * FR-US-003-006: non-sensitive profile fields of an audit entry ({@code module=trainer}).
+   * Document contents are never part of the Trainer aggregate and therefore never audited.
+   */
   private static Map<String, Object> profileFields(Trainer t) {
     Map<String, Object> m = new LinkedHashMap<>();
+    m.put("module", AUDIT_MODULE);
     m.put("trainerId", t.getId().toString());
     m.put("type", t.getType());
     m.put("employeeId", t.getEmployeeId());
@@ -291,6 +341,7 @@ public class TrainerCommandService {
     m.put("locationId", t.getLocationId() != null ? t.getLocationId().toString() : null);
     m.put("timezone", t.getTimezone());
     m.put("weekendAvailable", t.isWeekendAvailable());
+    m.put("msaNdaStatus", t.getMsaNdaStatus());
     m.values().removeIf(java.util.Objects::isNull);
     return m;
   }

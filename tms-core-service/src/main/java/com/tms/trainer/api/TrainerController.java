@@ -5,20 +5,20 @@ import com.tms.trainer.application.TrainerCommandService;
 import com.tms.trainer.application.TrainerCommandService.CreateCommand;
 import com.tms.trainer.application.TrainerCommandService.UpdateCommand;
 import com.tms.trainer.domain.TrainerSearchCriteria;
-import java.util.List;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -49,7 +49,10 @@ public class TrainerController {
     this.commands = commands;
   }
 
-  /** FR-US-003-001..007: 201 with the ACTIVE trainer; 400 with field errors; 403 without role. */
+  /**
+   * FR-US-003-001..007: 201 with the ACTIVE trainer; 400 with field errors; 409 on a duplicate
+   * employeeId/email; 401 without a token (SecurityConfig); 403 without a trainer create role.
+   */
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public TrainerResponse create(@RequestBody CreateTrainerRequest body) {
@@ -61,7 +64,8 @@ public class TrainerController {
                 body.name(),
                 body.email(),
                 body.locationId(),
-                body.weekendAvailable())));
+                body.weekendAvailable(),
+                body.msaNdaStatus())));
   }
 
   /** FR-US-003-004: a changed locationId recalculates Trainer.timezone. */
