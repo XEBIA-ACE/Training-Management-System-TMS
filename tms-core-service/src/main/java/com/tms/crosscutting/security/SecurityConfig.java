@@ -20,7 +20,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * <ul>
  *   <li>{@code /actuator/health/**}: public (rate limiting is applied at the gateway).
  *   <li>{@code /actuator/metrics/**}: {@code SUPER_ADMIN} or {@code OPS_MONITOR}.
- *   <li>{@code /api/admin/**}: {@code SUPER_ADMIN}.
+ *   <li>{@code /api/admin/**} and {@code /api/v1/admin/**} (US-004): {@code SUPER_ADMIN}.
  *   <li>{@code POST /api/auth/login|refresh}: public only when legacy auth is enabled.
  *   <li>{@code /api/v1/customers/**} (US-001): authenticated bearer token. GAP(US-001): no
  *       customer-specific roles/permissions are specified, so no role restriction is applied.
@@ -68,7 +68,8 @@ public class SecurityConfig {
               if (properties.openapiPublic()) {
                 auth.requestMatchers(OPENAPI_PATHS).permitAll();
               }
-              auth.requestMatchers("/api/admin/**").hasRole(TmsRoles.SUPER_ADMIN);
+              auth.requestMatchers("/api/admin/**", "/api/v1/admin/**")
+                  .hasRole(TmsRoles.SUPER_ADMIN);
               auth.requestMatchers("/api/v1/customers", "/api/v1/customers/**").authenticated();
               auth.requestMatchers("/api/trainers", "/api/trainers/**").authenticated();
               auth.requestMatchers("/api/v1/trainers", "/api/v1/trainers/**").authenticated();

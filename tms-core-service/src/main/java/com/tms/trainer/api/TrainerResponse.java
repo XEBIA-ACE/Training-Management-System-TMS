@@ -1,6 +1,7 @@
 package com.tms.trainer.api;
 
 import com.tms.trainer.application.TrainerProfile;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,7 +25,9 @@ public record TrainerResponse(
     List<UUID> certificationIds,
     String type,
     String timezone,
-    String msaNdaStatus) {
+    String msaNdaStatus,
+    Instant statusChangedAt,
+    String statusChangedBy) {
 
   static TrainerResponse from(TrainerProfile p) {
     return new TrainerResponse(
@@ -39,6 +42,8 @@ public record TrainerResponse(
         p.certificationIds(),
         p.type(),
         p.timezone(),
-        p.msaNdaStatus());
+        p.msaNdaStatus(),
+        p.statusChangedAt(),
+        p.statusChangedBy());
   }
 }

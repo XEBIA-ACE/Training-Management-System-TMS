@@ -15,5 +15,10 @@ public enum AuditLogEntryType {
    */
   CREATE,
   /** An update operation (US-003 {@code PUT /api/v1/trainers/{trainerId}}). */
-  UPDATE
+  UPDATE,
+  /**
+   * A trainer status change attempt (US-004 {@code PATCH /api/v1/trainers/{trainerId}/status});
+   * {@code details.outcome} is {@code SUCCESS}, {@code DENIED} or {@code REJECTED}.
+   */
+  STATUS_CHANGE
 }

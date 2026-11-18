@@ -7,6 +7,11 @@ import java.util.UUID;
 /**
  * Filters of {@code GET /api/trainers} (FR-US-002-001/002). A {@code null} field means "not
  * supplied"; every supplied field is AND-combined. Blank strings are normalised to {@code null}.
+ *
+ * <p>US-004 (FR-US-004-AC2-001/003): without a {@code status} INACTIVE trainers are excluded;
+ * {@code status=INACTIVE} returns only them and {@code status=ALL} (case-insensitive) returns every
+ * status. The parameter name and the {@code ALL} value are implementation decisions, see
+ * docs/adr/US-004-trainer-status-gaps.md.
  */
 public record TrainerSearchCriteria(
     String status,
@@ -20,6 +25,10 @@ public record TrainerSearchCriteria(
     status = normalise(status);
     availabilityState = normalise(availabilityState);
     search = normalise(search);
+  }
+
+  public boolean includesAllStatuses() {
+    return TrainerStatus.ALL.equalsIgnoreCase(status);
   }
 
   public boolean hasFreeText() {

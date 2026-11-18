@@ -6,6 +6,8 @@ import com.tms.crosscutting.audit.AuditLogEntryType;
 import com.tms.crosscutting.security.AuthContext;
 import com.tms.crosscutting.security.AuthContextProvider;
 import com.tms.crosscutting.web.CorrelationIdFilter;
+import com.tms.trainer.domain.Trainer;
+import com.tms.trainer.domain.TrainerInactiveException;
 import com.tms.trainer.domain.TrainerNotFoundException;
 import com.tms.trainer.domain.TrainerRepository;
 import com.tms.trainer.domain.TrainerSearchCriteria;
@@ -119,6 +121,23 @@ public class TrainerAppService {
       throw new TrainerNotFoundException(id);
     }
     return profile;
+  }
+
+  /**
+   * FR-US-004-AC3-001/002: guard for the allocation module before it creates an Allocation. Throws
+   * {@link TrainerInactiveException} for an INACTIVE trainer (no RBAC: an internal module call).
+   * GAP: this repository has no allocation endpoint yet, so nothing calls this method (see
+   * docs/adr/US-004-trainer-status-gaps.md).
+   */
+  public void requireAllocatable(UUID id) {
+    Trainer trainer =
+        readOnlyTx.execute(s -> repository.findById(id).orElse(null));
+    if (trainer == null) {
+      throw new TrainerNotFoundException(id);
+    }
+    if (trainer.isInactive()) {
+      throw new TrainerInactiveException(id);
+    }
   }
 
   /**

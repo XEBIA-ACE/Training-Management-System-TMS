@@ -1,6 +1,7 @@
 package com.tms.trainer.application;
 
 import com.tms.trainer.domain.Trainer;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,7 +22,9 @@ public record TrainerProfile(
     List<UUID> certificationIds,
     String type,
     String timezone,
-    String msaNdaStatus) {
+    String msaNdaStatus,
+    Instant statusChangedAt,
+    String statusChangedBy) {
 
   static TrainerProfile from(Trainer trainer) {
     return new TrainerProfile(
@@ -36,6 +39,8 @@ public record TrainerProfile(
         trainer.getCertificationIds().stream().sorted().toList(),
         trainer.getType(),
         trainer.getTimezone(),
-        trainer.getMsaNdaStatus());
+        trainer.getMsaNdaStatus(),
+        trainer.getStatusChangedAt(),
+        trainer.getStatusChangedBy());
   }
 }

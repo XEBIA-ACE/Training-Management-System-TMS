@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -73,6 +74,16 @@ public class TrainerController {
   public TrainerResponse update(@PathVariable UUID id, @RequestBody UpdateTrainerRequest body) {
     return TrainerResponse.from(
         commands.update(id, new UpdateCommand(body.name(), body.locationId())));
+  }
+
+  /**
+   * FR-US-004-AC1-001..003/AC6-001/002: 200 with the full updated trainer; 400 on an invalid
+   * status; 403 without HR_ADMIN/SUPER_ADMIN; 404 when unknown.
+   */
+  @PatchMapping("/{id}/status")
+  public TrainerResponse changeStatus(
+      @PathVariable UUID id, @RequestBody UpdateTrainerStatusRequest body) {
+    return TrainerResponse.from(commands.changeStatus(id, body.status()));
   }
 
   /** FR-US-003-006/007: immutable audit trail for the trainer. */
