@@ -36,7 +36,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /**
  * US-003 acceptance tests for trainer creation ({@code POST /api/v1/trainers}), update ({@code PUT
  * /api/v1/trainers/{id}}) and the trainer audit trail. Test obligations:
- * 2d9e1c7c-6d1c-46cc-9803-1edeb7c26a64:test:acceptance:US-003-ac-1..ac-7 (tasks T008..T014).
+ * 85d2d05e-303e-4749-a1ba-6b5754afe9a2:test:acceptance:US-003-ac-1..ac-7 (tasks T008..T014).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
