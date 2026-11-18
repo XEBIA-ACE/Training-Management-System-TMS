@@ -23,7 +23,10 @@ final class TrainerSpecifications {
   static Specification<Trainer> matching(TrainerSearchCriteria criteria) {
     return (root, query, cb) -> {
       List<Predicate> predicates = new ArrayList<>();
-      if (criteria.status() != null) {
+      if (criteria.status() == null) {
+        // FR-US-004-AC2-001/002: INACTIVE trainers only appear on an explicit status filter.
+        predicates.add(cb.notEqual(root.get("status"), TrainerStatus.INACTIVE));
+      } else if (!criteria.includesAllStatuses()) {
         predicates.add(cb.equal(root.get("status"), criteria.status()));
       }
       if (criteria.availabilityState() != null) {

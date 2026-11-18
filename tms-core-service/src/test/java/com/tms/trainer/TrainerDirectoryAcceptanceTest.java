@@ -100,11 +100,15 @@ class TrainerDirectoryAcceptanceTest {
       "[US-002-ac-1][FR-US-002-001][T008] each filter alone returns only trainers matching it")
   void us002Ac1_eachFilterRestrictsResults() throws Exception {
     assertThat(ids(Map.of("status", "ACTIVE"))).containsExactly(alice, bob, dave);
-    assertThat(ids(Map.of("certificationId", AZURE.toString()))).containsExactly(carol, dave);
+    assertThat(ids(Map.of("certificationId", AZURE.toString(), "status", "ALL")))
+        .containsExactly(carol, dave);
     assertThat(ids(Map.of("availabilityState", "ALLOCATED"))).containsExactly(dave);
-    assertThat(ids(Map.of("locationId", PUNE.toString()))).containsExactly(alice, bob, carol);
+    assertThat(ids(Map.of("locationId", PUNE.toString(), "status", "ALL")))
+        .containsExactly(alice, bob, carol);
     assertThat(ids(Map.of("weekendAvailable", "false"))).containsExactly(bob);
-    assertThat(ids(Map.of())).containsExactly(alice, bob, carol, dave);
+    // US-004 (FR-US-004-AC2-001/003): INACTIVE carol is hidden unless status=ALL is requested.
+    assertThat(ids(Map.of())).containsExactly(alice, bob, dave);
+    assertThat(ids(Map.of("status", "ALL"))).containsExactly(alice, bob, carol, dave);
   }
 
   @Test
@@ -162,9 +166,10 @@ class TrainerDirectoryAcceptanceTest {
           + " (case-insensitive)")
   void us002Ac2_searchMatchesNameEmailAndEmployeeId() throws Exception {
     assertThat(ids(Map.of("search", "JONES"))).containsExactly(bob);
-    assertThat(ids(Map.of("search", "carol@corp"))).containsExactly(carol);
+    assertThat(ids(Map.of("search", "carol@corp", "status", "ALL"))).containsExactly(carol);
     assertThat(ids(Map.of("search", "e400"))).containsExactly(dave);
-    assertThat(ids(Map.of("search", "corp.com"))).containsExactly(alice, bob, carol, dave);
+    assertThat(ids(Map.of("search", "corp.com", "status", "ALL")))
+        .containsExactly(alice, bob, carol, dave);
     assertThat(ids(Map.of("search", "nobody"))).isEmpty();
   }
 
@@ -212,7 +217,8 @@ class TrainerDirectoryAcceptanceTest {
         .perform(authorized(get(TRAINERS)).param("search", "x".repeat(201)))
         .andExpect(status().isBadRequest());
     mockMvc
-        .perform(authorized(get(TRAINERS)).param("size", "2").param("page", "1"))
+        .perform(
+            authorized(get(TRAINERS)).param("size", "2").param("page", "1").param("status", "ALL"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items.length()").value(2))
         .andExpect(jsonPath("$.items[0].id").value(carol.toString()))
@@ -285,7 +291,7 @@ class TrainerDirectoryAcceptanceTest {
       "[US-002-ac-5][FR-US-002-005][T012] directory rows and profiles expose the same trainer id"
           + " and basic attributes for allocation APIs")
   void us002Ac5_identityAttributesAvailableWithoutExtraLookup() throws Exception {
-    JsonNode item = list(Map.of("search", "carol")).get("items").get(0);
+    JsonNode item = list(Map.of("search", "carol", "status", "ALL")).get("items").get(0);
     assertThat(item.get("id").asText()).isEqualTo(carol.toString());
     assertThat(item.get("employeeId").asText()).isEqualTo("E300");
     assertThat(item.get("name").asText()).isEqualTo("Carol White");

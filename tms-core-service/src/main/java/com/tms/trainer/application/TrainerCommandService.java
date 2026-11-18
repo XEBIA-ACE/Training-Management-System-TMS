@@ -14,9 +14,11 @@ import com.tms.trainer.domain.Trainer;
 import com.tms.trainer.domain.TrainerConflictException;
 import com.tms.trainer.domain.TrainerNotFoundException;
 import com.tms.trainer.domain.TrainerRepository;
+import com.tms.trainer.domain.TrainerStatus;
 import com.tms.trainer.domain.TrainerType;
 import com.tms.trainer.domain.TrainerValidationException;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -50,6 +52,7 @@ public class TrainerCommandService {
 
   static final String CREATE_ACTION = "POST /api/v1/trainers";
   static final String UPDATE_ACTION = "PUT /api/v1/trainers/{trainerId}";
+  static final String STATUS_ACTION = "PATCH /api/v1/trainers/{trainerId}/status";
   static final String RESOURCE_TYPE = "Trainer";
   static final String AUDIT_MODULE = "trainer";
   static final String AUDIT_ACTION = "GET /api/v1/trainers/{trainerId}/audit-logs";
@@ -192,6 +195,48 @@ public class TrainerCommandService {
     return updated;
   }
 
+  /**
+   * FR-US-004-AC1-001..003/AC5-001/002/AC6-001..003: sets {@code Trainer.status} to ACTIVE or
+   * INACTIVE. Every attempt (SUCCESS, DENIED, REJECTED) appends a STATUS_CHANGE audit entry; a
+   * caller without a create role additionally gets an UNAUTHORIZED_ACCESS entry and a 403.
+   */
+  public TrainerProfile changeStatus(UUID id, String requestedStatus) {
+    AuthContext actor = authContextProvider.current();
+    String newStatus = requestedStatus == null ? null : requestedStatus.trim();
+    if (!actor.authenticated() || !actor.hasAnyRole(properties.createRoles())) {
+      String current =
+          readOnlyTx.execute(s -> repository.findById(id).map(Trainer::getStatus).orElse(null));
+      auditStatusChange(actor, id, current, newStatus, "DENIED");
+      deny(actor, STATUS_ACTION, id); // UNAUTHORIZED_ACCESS entry + AccessDeniedException (403)
+      return null;
+    }
+    if (!TrainerStatus.isSettable(newStatus)) {
+      List<ValidationErrorItem> errors =
+          List.of(new ValidationErrorItem("status", "status must be ACTIVE or INACTIVE."));
+      auditStatusChange(actor, id, null, null, "REJECTED");
+      throw new TrainerValidationException(errors);
+    }
+    String[] previous = new String[1];
+    Instant now = clock.instant();
+    TrainerProfile updated;
+    try {
+      updated =
+          tx.execute(
+              s -> {
+                Trainer t =
+                    repository.findById(id).orElseThrow(() -> new TrainerNotFoundException(id));
+                previous[0] = t.getStatus();
+                t.changeStatus(newStatus, actor.actorId(), now);
+                return TrainerProfile.from(repository.save(t));
+              });
+    } catch (TrainerNotFoundException ex) {
+      auditStatusChange(actor, id, null, newStatus, "REJECTED");
+      throw ex;
+    }
+    auditStatusChange(actor, id, previous[0], newStatus, "SUCCESS");
+    return updated;
+  }
+
   /** FR-US-003-006/007: the immutable audit trail of one trainer, oldest first. */
   public List<AuditLogEntry> auditLogs(UUID id) {
     AuthContext actor = authContextProvider.current();
@@ -305,6 +350,27 @@ public class TrainerCommandService {
               Map.of("module", AUDIT_MODULE, "reason", "MISSING_TRAINER_ROLE")));
     }
     throw new AccessDeniedException("Trainer access denied");
+  }
+
+  /**
+   * FR-US-004-AC5-001/002: append-only STATUS_CHANGE entry (trainer id as resource, previous and
+   * requested status, acting user, timestamp, outcome). {@code requested} is only stored when it is
+   * a settable value, so raw user input never reaches the audit store.
+   */
+  private void auditStatusChange(
+      AuthContext actor, UUID id, String previous, String requested, String outcome) {
+    Map<String, Object> details = new LinkedHashMap<>();
+    details.put("module", AUDIT_MODULE);
+    details.put("trainerId", id.toString());
+    if (previous != null) {
+      details.put("previousStatus", previous);
+    }
+    if (TrainerStatus.isSettable(requested)) {
+      details.put("newStatus", requested);
+    }
+    details.put("outcome", outcome);
+    auditLogClient.appendAuditEntry(
+        entry(AuditLogEntryType.STATUS_CHANGE, actor.actorId(), STATUS_ACTION, id, details));
   }
 
   /**

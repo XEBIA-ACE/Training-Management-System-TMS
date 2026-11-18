@@ -64,6 +64,12 @@ public class Trainer {
   @BatchSize(size = 100)
   private Set<UUID> certificationIds = new LinkedHashSet<>();
 
+  @Column(name = "status_changed_at")
+  private Instant statusChangedAt;
+
+  @Column(name = "status_changed_by", length = 200)
+  private String statusChangedBy;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -116,6 +122,29 @@ public class Trainer {
       }
     }
     this.updatedAt = now;
+  }
+
+  /**
+   * FR-US-004-AC1-002: writes only {@code status} and its metadata (not {@code updatedAt}, which
+   * tracks profile edits).
+   */
+  public void changeStatus(String newStatus, String actor, Instant now) {
+    this.status = newStatus;
+    this.statusChangedAt = now;
+    this.statusChangedBy = actor;
+  }
+
+  /** FR-US-004-AC3-001: an INACTIVE trainer must not receive new allocations. */
+  public boolean isInactive() {
+    return TrainerStatus.INACTIVE.equals(status);
+  }
+
+  public Instant getStatusChangedAt() {
+    return statusChangedAt;
+  }
+
+  public String getStatusChangedBy() {
+    return statusChangedBy;
   }
 
   public String getType() {

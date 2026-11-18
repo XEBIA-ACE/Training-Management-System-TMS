@@ -30,6 +30,19 @@ class TrainerSearchCriteriaTest {
   }
 
   @Test
+  @DisplayName("[US-004-ac-2][FR-US-004-AC2-003] status=ALL (any case) lifts the restriction")
+  void allStatusesSentinel() {
+    assertThat(new TrainerSearchCriteria("all", null, null, null, null, null).includesAllStatuses())
+        .isTrue();
+    assertThat(
+            new TrainerSearchCriteria("INACTIVE", null, null, null, null, null)
+                .includesAllStatuses())
+        .isFalse();
+    assertThat(new TrainerSearchCriteria(null, null, null, null, null, null).includesAllStatuses())
+        .isFalse();
+  }
+
+  @Test
   @DisplayName("[US-002-ac-2] LIKE wildcards and the escape character are escaped")
   void escapesLikeWildcards() {
     assertThat(TrainerSpecifications.escapeLike("50%_a\\b")).isEqualTo("50\\%\\_a\\\\b");
