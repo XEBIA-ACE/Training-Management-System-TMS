@@ -14,6 +14,7 @@ import { ManagerDashboardScreen } from './screens/dashboard/ManagerDashboardScre
 import { CustomerDetailScreen } from './screens/customers/CustomerDetailScreen';
 import { CustomerListScreen } from './screens/customers/CustomerListScreen';
 import { TrainerListScreen } from './screens/masterdata/TrainerListScreen';
+import { TrainerCreateScreen } from './screens/trainers/TrainerCreateScreen';
 
 /**
  * Route shell (T003). Unauthenticated screens render standalone; everything else renders inside
@@ -39,6 +40,7 @@ export function App() {
         <Route path={ROUTES.adminUserEdit.path} element={<UserFormScreen />} />
         <Route path={ROUTES.adminUserRights.path} element={<UserRightsScreen />} />
         <Route path={ROUTES.trainerList.path} element={<TrainerListScreen />} />
+        <Route path={ROUTES.trainerCreate.path} element={<TrainerCreateScreen />} />
         <Route path={ROUTES.customerList.path} element={<CustomerListScreen />} />
         <Route path={ROUTES.customerDetail.path} element={<CustomerDetailScreen />} />
         <Route path={ROUTES.profile.path} element={<ProfileScreen />} />

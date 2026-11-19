@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   EmptyState,
   FilterChips,
@@ -11,6 +12,7 @@ import {
 } from '../../components';
 import { MOCK_TRAINERS, type MockTrainer } from '../../mocks/mockData';
 import { ROUTES } from '../../routes/routes';
+import { useTrainers } from '../../state/trainerStore';
 import { ScreenHeader } from '../common/ScreenHeader';
 
 const FILTERS = [
@@ -53,10 +55,24 @@ const COLUMNS: TableColumn<MockTrainer>[] = [
 
 /**
  * SCR-010 Trainer Management – List (F-01). No delete actions by design.
- * TODO(F-01): trainer creation and detail screens are not part of this scaffold; the add action
- * is disabled and filtering is not applied to data.
+ * TODO(F-01): detail screens are not part of this scaffold; filtering is not applied to data.
  */
 export function TrainerListScreen() {
+  const navigate = useNavigate();
+  const created = useTrainers();
+  // US-003: trainers created in-session (client store) appear immediately, without a reload.
+  const rows: MockTrainer[] = [
+    ...created.map((t) => ({
+      employeeId: t.employeeId ?? t.id,
+      name: t.name,
+      internal: t.trainerType === 'internal',
+      locationTimezone: [t.location, t.timeZone].filter(Boolean).join(' / '),
+      weekendAvailable: false,
+      incentiveEligible: false,
+      active: t.status === 'Active',
+    })),
+    ...MOCK_TRAINERS,
+  ];
   const [activeFilters, setActiveFilters] = useState<string[]>(['active']);
   const toggle = (id: string) =>
     setActiveFilters((current) =>
@@ -67,7 +83,7 @@ export function TrainerListScreen() {
       <ScreenHeader
         route={ROUTES.trainerList}
         actions={
-          <PrimaryButton disabled title="Trainer creation is not scaffolded yet (F-01)">
+          <PrimaryButton onClick={() => navigate(ROUTES.trainerCreate.path)}>
             Add trainer
           </PrimaryButton>
         }
@@ -84,7 +100,7 @@ export function TrainerListScreen() {
       <Table
         caption="Trainers"
         columns={COLUMNS}
-        rows={MOCK_TRAINERS}
+        rows={rows}
         getRowId={(row) => row.employeeId}
         emptyState={<EmptyState title="No trainers match the current filters" />}
       />
