@@ -1,0 +1,22 @@
+# Profile "persistence": enables the PostgreSQL datasource (core transactional database).
+# Connection details come only from TMS_ACL_DB_* environment variables.
+spring:
+  autoconfigure:
+    exclude: ""
+  datasource:
+    url: ${TMS_ACL_DB_URL}
+    username: ${TMS_ACL_DB_USERNAME}
+    password: ${TMS_ACL_DB_PASSWORD}
+    hikari:
+      pool-name: tms-integration-acl-pool
+      maximum-pool-size: ${TMS_ACL_DB_POOL_MAX_SIZE:10}
+  jpa:
+    hibernate:
+      # TODO SCAFFOLD-SVC-003: table DDL and migration tooling for ACL rules are not in the export;
+      # schema management is left off until they are specified.
+      ddl-auto: none
+
+tms:
+  integration-acl:
+    persistence:
+      enabled: true
