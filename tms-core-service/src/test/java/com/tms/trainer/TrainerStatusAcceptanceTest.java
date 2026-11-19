@@ -82,7 +82,7 @@ class TrainerStatusAcceptanceTest {
   // --- US-004-ac-1 (FR-US-004-AC1-001/002/003) -------------------------------------------------
 
   @Test
-  @DisplayName("[US-004-ac-1][FR-US-004-AC1-002/003] HR_ADMIN changes only status + metadata")
+  @DisplayName("[US-004-ac-1][US-004-AC1][FR-US-004-AC1-002/003] HR_ADMIN changes only status + metadata")
   void us004Ac1_onlyStatusAndMetadataChange() throws Exception {
     Map<String, Object> before = row(alice);
 
@@ -118,7 +118,7 @@ class TrainerStatusAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-004-ac-1][FR-US-004-AC1-001] SUPER_ADMIN may change status; bad value is 400")
+  @DisplayName("[US-004-ac-1][US-004-AC1][FR-US-004-AC1-001] SUPER_ADMIN may change status; bad value is 400")
   void us004Ac1_superAdminAllowedAndValueValidated() throws Exception {
     mockMvc
         .perform(patchStatus(bob, "INACTIVE", token("root", "ROLE_SUPER_ADMIN")))
@@ -137,7 +137,7 @@ class TrainerStatusAcceptanceTest {
   // --- US-004-ac-2 (FR-US-004-AC2-001/002/003/004) ---------------------------------------------
 
   @Test
-  @DisplayName("[US-004-ac-2][FR-US-004-AC2-001/003] INACTIVE hidden by default, shown on filter")
+  @DisplayName("[US-004-ac-2][US-004-AC2][FR-US-004-AC2-001/003] INACTIVE hidden by default, shown on filter")
   void us004Ac2_inactiveExcludedUnlessRequested() throws Exception {
     deactivate(alice);
 
@@ -152,7 +152,7 @@ class TrainerStatusAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-004-ac-2][FR-US-004-AC2-004] an INACTIVE trainer cannot be selected")
+  @DisplayName("[US-004-ac-2][US-004-AC2][FR-US-004-AC2-004] an INACTIVE trainer cannot be selected")
   void us004Ac2_inactiveTrainerNotAllocatable() throws Exception {
     deactivate(alice);
     assertThatThrownBy(() -> trainerService.requireAllocatable(alice))
@@ -162,7 +162,7 @@ class TrainerStatusAcceptanceTest {
   // --- US-004-ac-3 (FR-US-004-AC3-001/002) -----------------------------------------------------
 
   @Test
-  @DisplayName("[US-004-ac-3][FR-US-004-AC3-002] inactive guard has a business-level message")
+  @DisplayName("[US-004-ac-3][US-004-AC3][FR-US-004-AC3-002] inactive guard has a business-level message")
   void us004Ac3_inactiveGuardMessageAndActiveUnaffected() throws Exception {
     deactivate(alice);
     assertThatThrownBy(() -> trainerService.requireAllocatable(alice))
@@ -175,7 +175,7 @@ class TrainerStatusAcceptanceTest {
   // --- US-004-ac-4 (FR-US-004-AC4-001/002/003) -------------------------------------------------
 
   @Test
-  @DisplayName("[US-004-ac-4][FR-US-004-AC4-001/003] reactivation restores search eligibility")
+  @DisplayName("[US-004-ac-4][US-004-AC4][FR-US-004-AC4-001/003] reactivation restores search eligibility")
   void us004Ac4_reactivationRestoresEligibility() throws Exception {
     deactivate(alice);
     assertThat(listIds(Map.of("certificationId", AZURE.toString()))).isEmpty();
@@ -195,7 +195,7 @@ class TrainerStatusAcceptanceTest {
   // --- US-004-ac-5 (FR-US-004-AC5-001/002/003) -------------------------------------------------
 
   @Test
-  @DisplayName("[US-004-ac-5][FR-US-004-AC5-002/003] SUCCESS and DENIED attempts are audited")
+  @DisplayName("[US-004-ac-5][US-004-AC5][FR-US-004-AC5-002/003] SUCCESS and DENIED attempts are audited")
   void us004Ac5_everyAttemptAuditedAndRetrievable() throws Exception {
     Instant before = Instant.now().minusSeconds(1);
     mockMvc
@@ -234,7 +234,47 @@ class TrainerStatusAcceptanceTest {
   }
 
   @Test
-  @DisplayName("[US-004-ac-5][FR-US-004-AC5-001] audit entries are append-only")
+  @DisplayName("[US-004-AC5][FR-US-004-011] GET /admin/audit-logs filters status-change events")
+  void us004Ac5_adminAuditLogFilters() throws Exception {
+    mockMvc
+        .perform(patchStatus(alice, "INACTIVE", token("hr-1", "ROLE_HR_ADMIN")))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(patchStatus(bob, "INACTIVE", token("hr-2", "ROLE_HR_ADMIN")))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(patchStatus(alice, "ACTIVE", token("hr-2", "ROLE_HR_ADMIN")))
+        .andExpect(status().isOk());
+
+    assertThat(adminAudit("trainerId", alice.toString())).hasSize(2);
+    assertThat(adminAudit("actor", "hr-2")).hasSize(2);
+    assertThat(adminAudit("newStatus", "INACTIVE")).hasSize(2);
+    assertThat(adminAudit("previousStatus", "INACTIVE")).hasSize(1);
+    assertThat(adminAudit("trainerId", alice.toString(), "newStatus", "ACTIVE", "actor", "hr-2"))
+        .hasSize(1);
+    assertThat(adminAudit("from", Instant.now().plusSeconds(60).toString())).isEmpty();
+    assertThat(adminAudit("from", Instant.now().minusSeconds(60).toString())).hasSize(3);
+    // Non-SUPER_ADMIN callers stay forbidden (ADMIN.AUDIT.VIEW equivalent).
+    mockMvc
+        .perform(get(ADMIN + "/audit-logs").with(token("hr-1", "ROLE_HR_ADMIN")))
+        .andExpect(status().isForbidden());
+  }
+
+  private List<JsonNode> adminAudit(String... kv) throws Exception {
+    MockHttpServletRequestBuilder request =
+        get(ADMIN + "/audit-logs").with(token("root", "ROLE_SUPER_ADMIN"));
+    for (int i = 0; i < kv.length; i += 2) {
+      request.param(kv[i], kv[i + 1]);
+    }
+    JsonNode body =
+        json(mockMvc.perform(request).andExpect(status().isOk()).andReturn().getResponse());
+    List<JsonNode> items = new ArrayList<>();
+    body.get("items").forEach(items::add);
+    return items;
+  }
+
+  @Test
+  @DisplayName("[US-004-ac-5][US-004-AC5][FR-US-004-AC5-001] audit entries are append-only")
   void us004Ac5_entriesAreImmutable() throws Exception {
     mockMvc
         .perform(patchStatus(alice, "INACTIVE", token("hr-1", "ROLE_HR_ADMIN")))
